@@ -25,6 +25,7 @@
     "chaos": "tsx src/tests/chaosRunner.ts",
     "smoke": "tsx src/tests/smoke.ts",
     "readiness": "tsx src/tests/readiness.ts",
+    "health": "tsx src/tests/healthcheck.ts",
     "lint": "tsc --noEmit"
   },
   "dependencies": {
