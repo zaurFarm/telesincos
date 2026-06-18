@@ -10,6 +10,7 @@ import { runKnowledgeUpdate } from '../knowledge/updater.js';
 import { calculateDynamicLimit } from '../antiban/limits.js';
 import { runAutopost } from '../autopost/engine.js';
 import { checkSLOs } from '../system/sloManager.js';
+import { TelegramMarketScanner } from '../engines/market/scanner/TelegramMarketScanner.js';
 
 export const crmWorker = new Worker('crm', async (job) => {
   if (job.name === 'saveConversation') {
@@ -45,6 +46,16 @@ export const crmWorker = new Worker('crm', async (job) => {
 
   if (job.name === 'slo_check') {
     await checkSLOs();
+  }
+
+  if (job.name === 'market_scan') {
+    const found = await TelegramMarketScanner.scanChannels();
+    if (found.length > 0) {
+      await db.query(
+        `INSERT INTO actions (type, chat, user_name, content, reason) VALUES ($1, $2, $3, $4, $5)`,
+        ['market_scan', 'system', 'scanner', `Found ${found.length} competitor offers`, 'scheduled_scan']
+      );
+    }
   }
 
   if (job.name === 'reset_limits') {

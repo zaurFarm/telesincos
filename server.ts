@@ -82,6 +82,10 @@ async function startChecks() {
     await initDB();
     await initBillingDB();
     console.log('[DB] Database initialized.');
+
+    // Load persisted settings (AI provider/keys, userbot session, etc.) from DB
+    const { loadSettings } = await import('./src/system/settings.js');
+    await loadSettings();
     
     // Check Redis ping
     const { hasRedisUrl, connection: redisConn } = await import('./src/queue/redis.js');

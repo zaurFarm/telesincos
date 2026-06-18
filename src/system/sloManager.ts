@@ -30,7 +30,7 @@ export async function checkSLOs() {
       `),
       db.query(`
         SELECT 
-          COALESCE(AVG(EXTRACT(EPOCH FROM (updated_at - created_at)) * 1000), 100) as avg_latency
+          COALESCE(AVG(EXTRACT(EPOCH FROM (NOW() - updated_at)) * 1000), 100) as avg_latency
         FROM conversation_state 
         WHERE updated_at >= NOW() - INTERVAL '15 minutes'
       `)

@@ -86,4 +86,47 @@ export function updateSettings(newSettings: Partial<GlobalSettings>) {
   }
   
   botSettings = { ...botSettings, ...newSettings };
+
+  // Persist to DB (fire-and-forget; failures are logged, not fatal)
+  void persistSettings();
+}
+
+// Persist the full settings object into the global_settings key-value table.
+async function persistSettings(): Promise<void> {
+  try {
+    const { db } = await import('../db.js');
+    await db.query(
+      `INSERT INTO global_settings (id, settings, updated_at)
+       VALUES (1, $1::jsonb, NOW())
+       ON CONFLICT (id) DO UPDATE SET settings = $1::jsonb, updated_at = NOW()`,
+      [JSON.stringify(botSettings)]
+    );
+  } catch (e: any) {
+    console.error('[Settings] Failed to persist settings to DB:', e.message);
+  }
+}
+
+// Load settings from DB at startup, merging over the in-memory defaults.
+// env-derived secrets (openAiKey, etc.) remain as fallback if not stored in DB.
+export async function loadSettings(): Promise<void> {
+  try {
+    const { db } = await import('../db.js');
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS global_settings (
+        id INTEGER PRIMARY KEY,
+        settings JSONB DEFAULT '{}',
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    const res = await db.query('SELECT settings FROM global_settings WHERE id = 1');
+    if (res.rows.length && res.rows[0].settings) {
+      const stored = res.rows[0].settings;
+      botSettings = { ...botSettings, ...stored };
+      console.log('[Settings] Loaded persisted settings from DB.');
+    } else {
+      console.log('[Settings] No persisted settings found, using defaults.');
+    }
+  } catch (e: any) {
+    console.error('[Settings] Failed to load settings from DB:', e.message);
+  }
 }

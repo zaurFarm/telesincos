@@ -220,6 +220,21 @@ export async function initDB() {
         updated_at TIMESTAMP DEFAULT NOW()
       );
 
+      CREATE TABLE IF NOT EXISTS farm_workspaces (
+        id SERIAL PRIMARY KEY,
+        name TEXT,
+        state TEXT DEFAULT 'ACTIVE', -- 'ACTIVE', 'PAUSED'
+        tenant_id TEXT,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS farm_workspace_settings (
+        key TEXT PRIMARY KEY,
+        value TEXT,
+        updated_at TIMESTAMP DEFAULT NOW()
+      );
+
       CREATE TABLE IF NOT EXISTS users (
         id TEXT PRIMARY KEY,
         username TEXT,

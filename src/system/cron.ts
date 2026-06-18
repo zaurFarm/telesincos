@@ -30,12 +30,14 @@ export async function startCronJobs() {
   intervals.push(setInterval(() => enqueueWithLock('reset_limits', crmQueue, {}), 60 * 60 * 1000));
   intervals.push(setInterval(() => enqueueWithLock('knowledge_update', crmQueue, {}), 6 * 60 * 60 * 1000));
   intervals.push(setInterval(() => enqueueWithLock('slo_check', crmQueue, {}), 5 * 60 * 1000));
+  intervals.push(setInterval(() => enqueueWithLock('market_scan', crmQueue, {}), 30 * 60 * 1000));
 
   // Initial enqueues for immediate startup
   enqueueWithLock('warmup', crmQueue, {});
   enqueueWithLock('traffic', crmQueue, {});
   enqueueWithLock('knowledge_update', crmQueue, {});
   enqueueWithLock('slo_check', crmQueue, {});
+  enqueueWithLock('market_scan', crmQueue, {});
 }
 
 export function stopCronJobs() {

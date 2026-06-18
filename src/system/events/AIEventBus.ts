@@ -11,14 +11,8 @@ export class AIEventBus {
     if (this.isInitialized || !hasRedisUrl || process.env.DISABLE_WORKERS) return;
     this.isInitialized = true;
     
-    // Attempt to create consumer group (ignore if exists)
-    try {
-      await connection.xgroup('CREATE', this.streamKey, 'system_group', '$', 'MKSTREAM');
-    } catch (e: any) {
-      if (!e.message.includes('BUSYGROUP')) {
-        console.error('Failed to create consumer group', e);
-      }
-    }
+    // Ensure consumer group exists BEFORE starting the read loop (await, not fire-and-forget)
+    await this.ensureGroup();
 
     const consumerName = `consumer_${process.pid}_${Math.random().toString(36).substr(2, 5)}`;
     
@@ -52,14 +46,30 @@ export class AIEventBus {
             await connection.xack(this.streamKey, 'system_group', id);
           }
         }
-      } catch (e) {
-        console.error('Error reading from event stream', e);
+      } catch (e: any) {
+        // Self-heal: if the group/stream disappeared, recreate it instead of spamming errors
+        if (e && e.message && e.message.includes('NOGROUP')) {
+          await this.ensureGroup();
+        } else {
+          console.error('Error reading from event stream', e);
+        }
       } finally {
         setTimeout(readStream, 50); // loop
       }
     };
     
     setTimeout(readStream, 100);
+  }
+
+  // Create the consumer group, tolerating the case where it already exists.
+  private static async ensureGroup() {
+    try {
+      await connection.xgroup('CREATE', this.streamKey, 'system_group', '$', 'MKSTREAM');
+    } catch (e: any) {
+      if (!e.message.includes('BUSYGROUP')) {
+        console.error('Failed to create consumer group', e);
+      }
+    }
   }
 
   static on<T>(event: string, handler: EventHandler<T>) {

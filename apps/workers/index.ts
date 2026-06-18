@@ -20,6 +20,14 @@ export async function bootstrap() {
   try {
     setupGracefulShutdown('WORKERS', 20000);
 
+    // Load persisted settings (AI provider/keys) so workers use the same config as the API
+    try {
+      const { loadSettings } = await import('../../src/system/settings.js');
+      await loadSettings();
+    } catch (e: any) {
+      console.error('[WORKERS] Failed to load settings:', e.message);
+    }
+
     startMemoryWatchdog();
 
     const allWorkers = [aiWorker, crmWorker, retryWorker];
