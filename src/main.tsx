@@ -1,0 +1,54 @@
+import {StrictMode} from 'react';
+import {createRoot} from 'react-dom/client';
+import { BrowserRouter } from 'react-router-dom';
+import App from './App.tsx';
+import './index.css';
+import './i18n';
+
+let authErrorTriggeredAt = 0;
+
+const originalFetch = window.fetch;
+Object.defineProperty(window, 'fetch', {
+  value: async (input: RequestInfo | URL, init: RequestInit = {}) => {
+    const token = localStorage.getItem('ADMIN_TOKEN') || (import.meta as any).env?.VITE_ADMIN_TOKEN;
+    const headers = new Headers(init.headers || {});
+    if (token && !headers.has('Authorization')) {
+      headers.set('Authorization', `Bearer ${token}`);
+    }
+    const res = await originalFetch(input, { ...init, headers });
+    if (res.status === 403 || res.status === 401) {
+      setTimeout(() => {
+        const savedToken = localStorage.getItem('ADMIN_TOKEN');
+        const url = typeof input === 'string' ? input : input instanceof URL ? input.href : (input as Request).url;
+        const ignoredPaths = [
+          '/api/billing', '/api/insights', '/api/dashboard',
+          '/api/system', '/api/admin', '/api/autopost', '/api/control',
+          '/api/governance', '/api/analytics', '/api/leads', '/api/revenue',
+          '/api/experiments', '/api/followups', '/api/usage', '/api/userbot',
+          '/api/accounts', '/api/settings', '/api/actions', '/api/competitors',
+          '/api/telemetry', '/api/report', '/api/payments',
+        ];
+        const isIgnored = ignoredPaths.some(p => url.includes(p));
+        const now = Date.now();
+        if (savedToken && !isIgnored && (now - authErrorTriggeredAt) > 3000) {
+          window.dispatchEvent(new CustomEvent('auth-error'));
+          authErrorTriggeredAt = now;
+        }
+      }, 2000);
+    }
+    return res;
+  },
+  writable: false,
+  configurable: true
+});
+
+import { HelmetProvider } from 'react-helmet-async';
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <HelmetProvider>
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
+    </HelmetProvider>
+  </StrictMode>,
+);

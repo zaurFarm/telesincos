@@ -1,0 +1,38 @@
+import i18n from 'i18next';
+import { initReactI18next } from 'react-i18next';
+import LanguageDetector from 'i18next-browser-languagedetector';
+import en from './locales/en.json';
+import ru from './locales/ru.json';
+import es from './locales/es.json';
+import fr from './locales/fr.json';
+import de from './locales/de.json';
+import zh from './locales/zh.json';
+
+// We'll add dynamic IP-based detection logic manually in App context if needed,
+// but the browser detector covers the device language automatically.
+// The userOverride can be saved in localStorage by the languagedetector plugins.
+
+i18n
+  .use(LanguageDetector)
+  .use(initReactI18next)
+  .init({
+    resources: {
+      en: { translation: en },
+      ru: { translation: ru },
+      es: { translation: es },
+      fr: { translation: fr },
+      de: { translation: de },
+      zh: { translation: zh }
+    },
+    fallbackLng: 'en',
+    interpolation: {
+      escapeValue: false // React already escapes values
+    },
+    detection: {
+      order: ['localStorage', 'navigator', 'htmlTag'],
+      caches: ['localStorage'],
+      lookupLocalStorage: 'app_preferred_language'
+    }
+  });
+
+export default i18n;

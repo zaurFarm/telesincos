@@ -1,0 +1,70 @@
+@import "tailwindcss";
+@custom-variant dark (&:is(.dark *));
+
+@layer base {
+  html {
+    overflow-y: scroll;
+  }
+}
+
+@layer utilities {
+  .typing-effect {
+    overflow: hidden;
+    white-space: nowrap;
+    border-right: 2px solid transparent;
+    animation: typing 2s steps(40, end), blink-caret .75s step-end infinite;
+  }
+  .hidden-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .hidden-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@keyframes typing {
+  from { width: 0; border-right-color: rgba(255,255,255,0.5); }
+  to { width: 100%; border-right-color: transparent }
+}
+
+@keyframes blink-caret {
+  from, to { border-right-color: transparent }
+  50% { border-right-color: rgba(255,255,255,0.5); }
+}
+
+@keyframes orbitalFloat {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(40px, -30px, 0) scale(1.08); }
+  100% { transform: translate3d(0, 0, 0) scale(1); }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { opacity: 0.45; filter: blur(120px); }
+  50% { opacity: 0.75; filter: blur(160px); }
+}
+
+.animate-orbital {
+  animation: orbitalFloat 12s ease-in-out infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 8s ease-in-out infinite;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
