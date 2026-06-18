@@ -8,3 +8,4 @@ coverage/
 !.env.example
 *.bak
 *.tar.gz
+*.bak_admin_security
