@@ -19,10 +19,12 @@ export interface MarketEntry {
  *   "Айфон 15 pro - 65000 руб"
  */
 export class TelegramMarketScanner {
-  // Match a price like "350р", "65 000 руб", "1200₽", "350 rub"
-  private static PRICE_RE = /(\d[\d\s.]{0,9}\d|\d)\s*(?:р|руб|rub|₽)\b/i;
+  // Match a price like "350р", "65 000 руб", "1200₽", "350 rub".
+  // Note: \b fails between a digit and a Cyrillic letter, so we match the currency
+  // token explicitly without a trailing word boundary.
+  private static PRICE_RE = /(\d[\d\s.]{0,9}\d|\d)\s*(?:руб|р\.|р|rub|₽)/i;
   // Optional quantity like "от 100шт", "100 шт"
-  private static QTY_RE = /(?:от\s*)?(\d{1,6})\s*(?:шт|штук|pcs)\b/i;
+  private static QTY_RE = /(?:от\s*)?(\d{1,6})\s*(?:шт|штук|pcs)/i;
 
   static parseMessage(text: string): { product: string; price: number; quantity?: number } | null {
     if (!text) return null;
