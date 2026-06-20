@@ -16,9 +16,16 @@ export const tgQueue = new Queue('telegram', { connection, defaultJobOptions });
 export const tgDlq = new Queue('telegram_dlq', { connection });
 export const crmQueue = new Queue('crm', { connection, defaultJobOptions });
 
-[aiQueue, tgQueue, tgDlq, crmQueue].forEach(queue => {
+const _queueErrLast: Record<string, number> = {};
+[aiQueue, tgQueue, tgDlq, crmQueue].forEach((queue, idx) => {
   queue.on('error', err => {
-    // console.error('[Queue Error]', err.message);
+    // Rate-limit: log at most once per 30s per queue to avoid log floods on Redis outage
+    const now = Date.now();
+    const key = String(idx);
+    if (!_queueErrLast[key] || now - _queueErrLast[key] > 30000) {
+      _queueErrLast[key] = now;
+      console.error('[Queue Error]', err?.message || err);
+    }
   });
 });
 

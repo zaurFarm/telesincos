@@ -25,7 +25,7 @@ export async function getClient(account: any) {
                   password: u.password || undefined
               };
           }
-      } catch (e) {}
+      } catch (e: any) { console.debug("[clientPool] proxy parse failed:", e?.message); }
   } else if (account.proxy_ip) {
       proxyConfig = {
         ip: account.proxy_ip,

@@ -33,12 +33,15 @@ export async function initBillingDB() {
       ON CONFLICT (id) DO NOTHING;
     `);
 
-    // Mock initial subscription for tenant_1
-    await db.query(`
-      INSERT INTO tenant_subscriptions (tenant_id, plan_id, status, current_period_end)
-      VALUES ('tenant_1', 'pro', 'active', NOW() + INTERVAL '30 days')
-      ON CONFLICT (tenant_id) DO NOTHING;
-    `);
+    // Seed a demo subscription ONLY in development / when explicitly requested.
+    // Never auto-grant a paid plan in production.
+    if (process.env.SEED_DEMO_SUBSCRIPTION === 'true' && process.env.NODE_ENV !== 'production') {
+      await db.query(`
+        INSERT INTO tenant_subscriptions (tenant_id, plan_id, status, current_period_end)
+        VALUES ('tenant_1', 'pro', 'active', NOW() + INTERVAL '30 days')
+        ON CONFLICT (tenant_id) DO NOTHING;
+      `);
+    }
   } catch (e: any) {
     console.error('⚠️ Could not initialize billing DB (will retry or ignore):', e.message);
   }

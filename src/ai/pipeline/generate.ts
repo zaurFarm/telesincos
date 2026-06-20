@@ -12,7 +12,7 @@ export async function generate({ input, state, decision, analysis }: any) {
              await db.query(`INSERT INTO group_offers (chat_id, product) VALUES ($1, $2)`, [String(input.chatId), analysis.product]);
           }
           await db.query(`INSERT INTO user_seen_products (user_id, product) VALUES ($1, $2)`, [String(input.userId), analysis.product]);
-      } catch(e) {}
+      } catch(e: any) { console.debug("[pipeline.generate] seen-product insert failed:", e?.message); }
   }
 
   // Use Auto-Evolved Variants for initial cold messages

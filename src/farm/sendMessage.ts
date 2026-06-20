@@ -63,7 +63,7 @@ export async function sendMessageSmart(chatId: string, text: string, specificAcc
             peer: chatId,
             action: action
         }));
-    } catch(e) {}
+    } catch(e: any) { console.debug("[sendMessage] typing action failed:", e?.message); }
 
     await new Promise(res => setTimeout(res, delay));
     

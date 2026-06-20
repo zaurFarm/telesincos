@@ -6,6 +6,7 @@ export class AIEventBus {
   private static handlers = new Map<string, EventHandler<any>[]>();
   private static streamKey = 'ai_event_stream';
   private static isInitialized = false;
+  private static errorBackoffMs = 50;
 
   private static async initConsumer() {
     if (this.isInitialized || !hasRedisUrl || process.env.DISABLE_WORKERS) return;
@@ -17,6 +18,7 @@ export class AIEventBus {
     const consumerName = `consumer_${process.pid}_${Math.random().toString(36).substr(2, 5)}`;
     
     const readStream = async () => {
+      let nextDelay = 50;
       try {
         const result = await connection.xreadgroup(
           'GROUP', 'system_group', consumerName,
@@ -50,11 +52,15 @@ export class AIEventBus {
         // Self-heal: if the group/stream disappeared, recreate it instead of spamming errors
         if (e && e.message && e.message.includes('NOGROUP')) {
           await this.ensureGroup();
+          this.errorBackoffMs = 50; // reset; group was just (re)created
         } else {
           console.error('Error reading from event stream', e);
+          // Back off on persistent errors so we don't spin at ~20Hz hammering Redis/logs
+          this.errorBackoffMs = Math.min(this.errorBackoffMs * 2, 30000);
+          nextDelay = this.errorBackoffMs;
         }
       } finally {
-        setTimeout(readStream, 50); // loop
+        setTimeout(readStream, nextDelay);
       }
     };
     

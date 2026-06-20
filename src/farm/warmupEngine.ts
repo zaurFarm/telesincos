@@ -66,7 +66,7 @@ async function simulateOnline(client: any) {
   try {
       await client.invoke(new Api.account.UpdateStatus({ offline: false }));
       await new Promise(res => setTimeout(res, 5000 + Math.random() * 10000));
-  } catch(e) {}
+  } catch(e: any) { console.debug("[warmup] status update failed:", e?.message); }
 }
 
 export async function runWarmupCycle() {

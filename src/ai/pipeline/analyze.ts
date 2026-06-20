@@ -59,7 +59,7 @@ export async function analyze(input: any, state: any) {
       try {
           const gRes = await db.query(`SELECT 1 FROM group_offers WHERE chat_id=$1 AND product=$2 AND offered_at > NOW() - INTERVAL '24 hours'`, [String(input.chatId), product]);
           alreadyOfferedGroup = gRes.rowCount > 0;
-      } catch (e) {}
+      } catch (e: any) { console.debug("[pipeline.analyze] group_offers check failed:", e?.message); }
   }
 
   let seenByUser = false;

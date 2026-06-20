@@ -21,7 +21,11 @@ export class MarketIntelligenceFacade {
     
     // 1. Fetch Integration Data (Purchase Price, Stock)
     const integrationData = await OneCIntegration.fetchProductData(sku);
-    const purchasePrice = integrationData?.purchasePrice || (currentSystemPrice * 0.7); // Mock fallback
+    // Cost is UNKNOWN when 1C is not configured — never fabricate it.
+    // When unknown, fall back to the current system price as a conservative floor
+    // so policy never recommends selling below a guessed margin.
+    const costKnown = typeof integrationData?.purchasePrice === 'number' && integrationData.purchasePrice > 0;
+    const purchasePrice = costKnown ? integrationData!.purchasePrice : currentSystemPrice;
     
     // 2. Scan Market — pull real competitor prices collected from Telegram messages
     const { db } = await import('../../db.js');

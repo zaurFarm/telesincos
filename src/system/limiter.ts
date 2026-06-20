@@ -67,7 +67,7 @@ export async function checkAutoShutdown() {
                 try {
                     const { logger } = await import('./logger.js');
                     logger.error({ type: 'system', message: `Ban rate ${banRate.toFixed(2)} exceeded threshold ${state.ban_rate_threshold}. AUTO-SHUTDOWN TRIGGERED.` });
-                } catch(e) {}
+                } catch(e: any) { console.debug("[limiter] ban-rate log failed:", e?.message); }
                 await updateSystemState({ is_paused: true });
             }
         }
