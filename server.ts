@@ -1779,8 +1779,12 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
+    app.use(express.static(distPath, { dotfiles: 'deny' }));
     app.get('*', (req, res) => {
+      // Never serve dotfiles (.env, .git, etc.) via SPA fallback
+      if (/\/\.(env|git)/i.test(req.path)) {
+        return res.status(404).send('Not found');
+      }
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }
