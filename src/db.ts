@@ -472,6 +472,7 @@ export async function initDB() {
         price_current DECIMAL(10, 2),
         margin_min_percent FLOAT DEFAULT 15.0,
         cost_price DECIMAL(10, 2),
+        stock INTEGER DEFAULT 0,
         meta_title TEXT,
         meta_description TEXT,
         canonical_url TEXT,
