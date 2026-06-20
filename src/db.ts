@@ -84,8 +84,8 @@ export const db = {
     }
     try {
       await client.query('BEGIN');
-      await client.query(`SET LOCAL app.tenant_id = '${activeTenantId}'`);
-      await client.query(`SET LOCAL app.workspace_id = '${activeTenantId}'`);
+      await client.query(`SELECT set_config('app.tenant_id', $1, true)`, [String(activeTenantId)]);
+      await client.query(`SELECT set_config('app.workspace_id', $1, true)`, [String(activeTenantId)]);
       const result = await runQuery(client);
       await client.query('COMMIT');
       dbAvailable = true;
@@ -232,6 +232,12 @@ export async function initDB() {
       CREATE TABLE IF NOT EXISTS farm_workspace_settings (
         key TEXT PRIMARY KEY,
         value TEXT,
+        updated_at TIMESTAMP DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS global_settings (
+        id INTEGER PRIMARY KEY,
+        settings JSONB DEFAULT '{}',
         updated_at TIMESTAMP DEFAULT NOW()
       );
 
