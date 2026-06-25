@@ -1,5 +1,4 @@
 import { aiWorker } from '../../src/workers/aiWorker.js';
-import { tgWorker } from '../../src/workers/tgWorker.js';
 import { crmWorker } from '../../src/workers/crmWorker.js';
 import { retryWorker } from '../../src/workers/retryWorker.js';
 import { startFollowupWorker } from '../../src/workers/followupWorker.js';

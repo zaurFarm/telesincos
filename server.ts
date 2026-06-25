@@ -467,10 +467,12 @@ export async function saveConversation(
   accountId?: number
 ) {
   try {
-    await pool.query(`
-      INSERT INTO conversations (user_id, chat_id, role, message, lead_id, account_id)
-      VALUES ($1, $2, $3, $4, $5, $6)
-    `, [userId, chatId, role, message, leadId || null, accountId || null]);
+    await pool.withTenant('tenant_1', async (client: any) => {
+      await client.query(`
+        INSERT INTO conversations (user_id, chat_id, role, message, lead_id, account_id, tenant_id)
+        VALUES ($1, $2, $3, $4, $5, $6, 'tenant_1')
+      `, [userId, chatId, role, message, leadId || null, accountId || null]);
+    });
   } catch (e) {
     console.error("Failed to save conversation", e);
   }

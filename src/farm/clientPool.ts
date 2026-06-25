@@ -55,6 +55,14 @@ export async function getClient(account: any) {
 
   await client.connect();
 
+  // Прогреваем кэш сущностей (entity cache) — без этого gramJS не может
+  // отрезолвить чужой userId в Peer, если этот клиент ни разу не видел диалог.
+  try {
+    await client.getDialogs({ limit: 50 });
+  } catch (e: any) {
+    console.debug('[clientPool] getDialogs warmup failed:', e?.message);
+  }
+
   clients[account.id] = client;
 
   return client;
