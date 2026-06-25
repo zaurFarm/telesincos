@@ -516,10 +516,10 @@ export async function initDB() {
       DO $$
       BEGIN
         BEGIN
-          ALTER TABLE system_accounts ADD COLUMN last_used_at TIMESTAMP;
-          ALTER TABLE system_accounts ADD COLUMN trust_score FLOAT DEFAULT 0;
-          ALTER TABLE system_accounts ADD COLUMN warmup_stage TEXT DEFAULT 'new';
-          ALTER TABLE system_accounts ADD COLUMN proxy_id TEXT;
+          ALTER TABLE system_accounts ADD COLUMN IF NOT EXISTS last_used_at TIMESTAMP;
+          ALTER TABLE system_accounts ADD COLUMN IF NOT EXISTS trust_score FLOAT DEFAULT 0;
+          ALTER TABLE system_accounts ADD COLUMN IF NOT EXISTS warmup_stage TEXT DEFAULT 'new';
+          ALTER TABLE system_accounts ADD COLUMN IF NOT EXISTS proxy_id TEXT;
         EXCEPTION
           WHEN duplicate_column THEN RAISE NOTICE 'farm tracking columns already exist in system_accounts.';
           WHEN undefined_table THEN NULL;
@@ -530,7 +530,7 @@ export async function initDB() {
       DO $$
       BEGIN
         BEGIN
-          ALTER TABLE leads ADD COLUMN stage TEXT DEFAULT 'interest';
+          ALTER TABLE leads ADD COLUMN IF NOT EXISTS stage TEXT DEFAULT 'interest';
         EXCEPTION
           WHEN duplicate_column THEN RAISE NOTICE 'column stage already exists in leads.';
           WHEN undefined_table THEN NULL;
@@ -541,13 +541,13 @@ export async function initDB() {
       DO $$
       BEGIN
         BEGIN
-          ALTER TABLE leads ADD COLUMN expected_amount NUMERIC;
-          ALTER TABLE leads ADD COLUMN expected_card_last4 TEXT;
-          ALTER TABLE leads ADD COLUMN payment_status TEXT DEFAULT 'waiting';
-          ALTER TABLE leads ADD COLUMN is_hot BOOLEAN DEFAULT false;
-          ALTER TABLE leads ADD COLUMN score FLOAT DEFAULT 0;
-          ALTER TABLE leads ADD COLUMN needs_human BOOLEAN DEFAULT false;
-          ALTER TABLE leads ADD COLUMN workspace_id UUID;
+          ALTER TABLE leads ADD COLUMN IF NOT EXISTS expected_amount NUMERIC;
+          ALTER TABLE leads ADD COLUMN IF NOT EXISTS expected_card_last4 TEXT;
+          ALTER TABLE leads ADD COLUMN IF NOT EXISTS payment_status TEXT DEFAULT 'waiting';
+          ALTER TABLE leads ADD COLUMN IF NOT EXISTS is_hot BOOLEAN DEFAULT false;
+          ALTER TABLE leads ADD COLUMN IF NOT EXISTS score FLOAT DEFAULT 0;
+          ALTER TABLE leads ADD COLUMN IF NOT EXISTS needs_human BOOLEAN DEFAULT false;
+          ALTER TABLE leads ADD COLUMN IF NOT EXISTS workspace_id UUID;
         EXCEPTION
           WHEN duplicate_column THEN RAISE NOTICE 'columns already exist in leads.';
           WHEN undefined_table THEN NULL;
@@ -557,7 +557,7 @@ export async function initDB() {
       DO $$
       BEGIN
         BEGIN
-          ALTER TABLE conversations ADD COLUMN workspace_id UUID;
+          ALTER TABLE conversations ADD COLUMN IF NOT EXISTS workspace_id UUID;
         EXCEPTION
           WHEN duplicate_column THEN RAISE NOTICE 'column workspace_id already exists in conversations.';
           WHEN undefined_table THEN NULL;
@@ -567,7 +567,7 @@ export async function initDB() {
       DO $$
       BEGIN
         BEGIN
-          ALTER TABLE sales_metrics ADD COLUMN workspace_id UUID;
+          ALTER TABLE sales_metrics ADD COLUMN IF NOT EXISTS workspace_id UUID;
         EXCEPTION
           WHEN duplicate_column THEN RAISE NOTICE 'column workspace_id already exists in sales_metrics.';
           WHEN undefined_table THEN RAISE NOTICE 'table sales_metrics does not exist yet, skipping.';
@@ -577,7 +577,7 @@ export async function initDB() {
       DO $$
       BEGIN
         BEGIN
-          ALTER TABLE ai_metrics ADD COLUMN workspace_id UUID;
+          ALTER TABLE ai_metrics ADD COLUMN IF NOT EXISTS workspace_id UUID;
         EXCEPTION
           WHEN duplicate_column THEN RAISE NOTICE 'column workspace_id already exists in ai_metrics.';
           WHEN undefined_table THEN NULL;
@@ -948,41 +948,41 @@ export async function initDB() {
       DO $$
       BEGIN
         BEGIN
-          ALTER TABLE farm_accounts ADD COLUMN session TEXT;
-          ALTER TABLE farm_accounts ADD COLUMN proxy TEXT;
-          ALTER TABLE farm_accounts ADD COLUMN role TEXT DEFAULT 'hybrid';
-          ALTER TABLE farm_accounts ADD COLUMN trust_score FLOAT DEFAULT 0.0;
-          ALTER TABLE farm_accounts ADD COLUMN daily_limit INTEGER DEFAULT 50;
-          ALTER TABLE farm_accounts ADD COLUMN sent_today INTEGER DEFAULT 0;
-          ALTER TABLE farm_accounts ADD COLUMN last_used_at TIMESTAMP;
-          ALTER TABLE farm_accounts ADD COLUMN cooldown_until TIMESTAMP;
-          ALTER TABLE farm_accounts ADD COLUMN flood_count INTEGER DEFAULT 0;
-          ALTER TABLE farm_accounts ADD COLUMN last_error TIMESTAMP;
-          ALTER TABLE farm_accounts ADD COLUMN warmup_stage INTEGER DEFAULT 1;
-          ALTER TABLE farm_accounts ADD COLUMN behavior_profile JSONB DEFAULT '{"typingSpeed": [40, 80], "emojiUsage": 0.2, "messageLength": "short", "slangLevel": 0.3}';
-          ALTER TABLE farm_accounts ADD COLUMN policy JSONB DEFAULT '{"canInitiate": true, "canReply": true, "allowedChatTypes": ["private", "group"], "maxMessagesPerHour": 30, "cooldownMs": 5000}';
-          ALTER TABLE farm_accounts ADD COLUMN reply_rate FLOAT DEFAULT 0.0;
-          ALTER TABLE farm_accounts ADD COLUMN block_events INTEGER DEFAULT 0;
-          ALTER TABLE farm_accounts ADD COLUMN performance_score FLOAT DEFAULT 0.0;
+          ALTER TABLE farm_accounts ADD COLUMN IF NOT EXISTS session TEXT;
+          ALTER TABLE farm_accounts ADD COLUMN IF NOT EXISTS proxy TEXT;
+          ALTER TABLE farm_accounts ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'hybrid';
+          ALTER TABLE farm_accounts ADD COLUMN IF NOT EXISTS trust_score FLOAT DEFAULT 0.0;
+          ALTER TABLE farm_accounts ADD COLUMN IF NOT EXISTS daily_limit INTEGER DEFAULT 50;
+          ALTER TABLE farm_accounts ADD COLUMN IF NOT EXISTS sent_today INTEGER DEFAULT 0;
+          ALTER TABLE farm_accounts ADD COLUMN IF NOT EXISTS last_used_at TIMESTAMP;
+          ALTER TABLE farm_accounts ADD COLUMN IF NOT EXISTS cooldown_until TIMESTAMP;
+          ALTER TABLE farm_accounts ADD COLUMN IF NOT EXISTS flood_count INTEGER DEFAULT 0;
+          ALTER TABLE farm_accounts ADD COLUMN IF NOT EXISTS last_error TIMESTAMP;
+          ALTER TABLE farm_accounts ADD COLUMN IF NOT EXISTS warmup_stage INTEGER DEFAULT 1;
+          ALTER TABLE farm_accounts ADD COLUMN IF NOT EXISTS behavior_profile JSONB DEFAULT '{"typingSpeed": [40, 80], "emojiUsage": 0.2, "messageLength": "short", "slangLevel": 0.3}';
+          ALTER TABLE farm_accounts ADD COLUMN IF NOT EXISTS policy JSONB DEFAULT '{"canInitiate": true, "canReply": true, "allowedChatTypes": ["private", "group"], "maxMessagesPerHour": 30, "cooldownMs": 5000}';
+          ALTER TABLE farm_accounts ADD COLUMN IF NOT EXISTS reply_rate FLOAT DEFAULT 0.0;
+          ALTER TABLE farm_accounts ADD COLUMN IF NOT EXISTS block_events INTEGER DEFAULT 0;
+          ALTER TABLE farm_accounts ADD COLUMN IF NOT EXISTS performance_score FLOAT DEFAULT 0.0;
         EXCEPTION
           WHEN duplicate_column THEN RAISE NOTICE 'columns already exist in farm_accounts.';
         END;
 
         BEGIN
-          ALTER TABLE pending_autoposts ADD COLUMN risk_score INTEGER DEFAULT 0;
-          ALTER TABLE pending_autoposts ADD COLUMN risk_reasons TEXT;
+          ALTER TABLE pending_autoposts ADD COLUMN IF NOT EXISTS risk_score INTEGER DEFAULT 0;
+          ALTER TABLE pending_autoposts ADD COLUMN IF NOT EXISTS risk_reasons TEXT;
         EXCEPTION
           WHEN duplicate_column THEN RAISE NOTICE 'risk_score already exists in pending_autoposts.';
         END;
 
         BEGIN
-          ALTER TABLE decision_logs ADD COLUMN variant_id INTEGER DEFAULT NULL;
+          ALTER TABLE decision_logs ADD COLUMN IF NOT EXISTS variant_id INTEGER DEFAULT NULL;
         EXCEPTION
           WHEN duplicate_column THEN RAISE NOTICE 'variant_id already exists in decision_logs.';
         END;
 
         BEGIN
-          ALTER TABLE conversations ADD COLUMN account_id INTEGER DEFAULT NULL;
+          ALTER TABLE conversations ADD COLUMN IF NOT EXISTS account_id INTEGER DEFAULT NULL;
         EXCEPTION
           WHEN duplicate_column THEN RAISE NOTICE 'account_id already exists in conversations.';
           WHEN undefined_table THEN NULL;
@@ -993,8 +993,8 @@ export async function initDB() {
       DO $$
       BEGIN
         BEGIN
-          ALTER TABLE farm_channels ADD COLUMN type TEXT DEFAULT 'micro';
-          ALTER TABLE farm_channels ADD COLUMN parent_id TEXT;
+          ALTER TABLE farm_channels ADD COLUMN IF NOT EXISTS type TEXT DEFAULT 'micro';
+          ALTER TABLE farm_channels ADD COLUMN IF NOT EXISTS parent_id TEXT;
         EXCEPTION
           WHEN duplicate_column THEN RAISE NOTICE 'columns already exist in farm_channels.';
           WHEN undefined_table THEN NULL;
