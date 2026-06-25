@@ -141,6 +141,14 @@ export const tgWorker = new Worker('telegram', async (job) => {
          await client.connect();
       }
 
+      // Отмечаем сообщение как прочитанное ПЕРЕД ответом — имитация живого человека.
+      // Без этого бот выглядит подозрительно: отвечает без прочтения.
+      try {
+        await client.markAsRead(chatId);
+      } catch (e) {
+        console.debug('[tgWorker] markAsRead failed:', e?.message);
+      }
+
       await simulateTyping(client, chatId, finalText.length);
 
       if (responseType === 'voice') {

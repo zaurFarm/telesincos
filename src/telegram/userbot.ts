@@ -130,21 +130,10 @@ export async function startUserbot() {
         // 🛡️ AI RISK SCORING
         const risk = await analyzeRisk(text);
         
-        if (risk.risk === 'high') {
+        // Риск только логируем — НЕ обрываем диалог шаблоном.
+        // Бот всегда думает над сообщением и отвечает по-человечески (генерация в worker).
+        if (risk.risk === 'high' || risk.risk === 'medium') {
           await logRisk(userId, risk.risk, risk.flags);
-          const dropMessage = "Сейчас не актуально, спасибо за интерес 👍";
-          
-          if (isPrivate) {
-            await clientInstance.sendMessage(chatId, { message: dropMessage });
-          } else {
-            await clientInstance.sendMessage(chatId, { message: dropMessage, replyTo: message.id });
-          }
-          return; // Прекращаем диалог с высокорисковым пользователем
-        }
-
-        if (risk.risk === 'medium') {
-          await logRisk(userId, risk.risk, risk.flags);
-          // Продолжаем, но риск записан в БД
         }
 
         // 🏫 CHAT LEARNING ENGINE (RAG)
