@@ -51,6 +51,7 @@ const bannedPhrases = [
 ];
 
 export function cleanBotText(text: string) {
+  if (!text || typeof text !== 'string') return text || '';
   let t = text;
 
   for (const phrase of bannedPhrases) {

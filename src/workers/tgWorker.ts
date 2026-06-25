@@ -30,8 +30,9 @@ import { scheduler } from '../system/scheduler.js';
 import { metrics } from '../system/metrics.js';
 
 export const tgWorker = new Worker('telegram', async (job) => {
-  const { ctx: incomingCtx, payload: data } = job.data;
-  const { chatId, text, accountId: requestedAccountId, emotion, stage, userId, leadId, replyTo, span: inputSpan, leadScore } = data || job.data;
+  const { ctx: incomingCtx, payload: rawPayload } = job.data;
+  const data = rawPayload || job.data; // effective payload, used everywhere (incl. DLQ re-packing) so fields never get lost
+  const { chatId, text, accountId: requestedAccountId, emotion, stage, userId, leadId, replyTo, span: inputSpan, leadScore } = data;
   
   const ctx = incomingCtx || createContext(data?.workspaceId || 'tenant_1');
   if (job.id) ctx.jobId = job.id;

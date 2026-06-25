@@ -101,6 +101,7 @@ export async function saveAccountMessage(accountId: string, text: string, embedd
 }
 
 export function mutateText(text: string) {
+  if (!text || typeof text !== 'string') return text || '';
   return text
     .replace(/да(\s|,|$)/ugi, 'ага$1')
     .replace(/есть/ugi, 'в наличии')
