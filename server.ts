@@ -473,8 +473,14 @@ export async function saveConversation(
         VALUES ($1, $2, $3, $4, $5, $6, 'tenant_1')
       `, [userId, chatId, role, message, leadId || null, accountId || null]);
     });
-  } catch (e) {
-    console.error("Failed to save conversation", e);
+  } catch (e: any) {
+    console.error("[SAVE_CONV_ERROR]", {
+      message: e?.message,
+      code: e?.code,
+      detail: e?.detail,
+      stack: e?.stack
+    });
+    throw e;
   }
 }
 
@@ -483,12 +489,14 @@ export async function getConversationContext(
   chatId: string
 ): Promise<string[]> {
   try {
-    const res = await pool.query(`
-      SELECT role, message FROM conversations
-      WHERE user_id=$1 AND chat_id=$2
-      ORDER BY id DESC
-      LIMIT 10
-    `, [userId, chatId]);
+    const res = await pool.withTenant('tenant_1', async (client: any) => {
+      return client.query(`
+        SELECT role, message FROM conversations
+        WHERE user_id=$1 AND chat_id=$2
+        ORDER BY id DESC
+        LIMIT 10
+      `, [userId, chatId]);
+    });
 
     return res.rows.reverse().map(r => `${r.role}: ${r.message}`);
   } catch (e) {

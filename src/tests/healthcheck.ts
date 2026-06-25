@@ -75,7 +75,9 @@ async function run() {
     const counts: Record<string, number> = {};
     for (const t of ['raw_messages', 'account_messages', 'conversations', 'leads', 'products', 'competitor_data', 'farm_accounts']) {
       try {
-        const r = await db.query(`SELECT COUNT(*)::int AS c FROM ${t}`);
+        const r = ['conversations', 'leads'].includes(t)
+          ? await db.withTenant('tenant_1', (client: any) => client.query(`SELECT COUNT(*)::int AS c FROM ${t}`))
+          : await db.query(`SELECT COUNT(*)::int AS c FROM ${t}`);
         counts[t] = r.rows[0].c;
       } catch { counts[t] = -1; }
     }
