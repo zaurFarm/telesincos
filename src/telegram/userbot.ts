@@ -104,6 +104,7 @@ export async function startUserbot() {
     clientInstance.addEventHandler(async (event: any) => {
       try {
         const message = event.message;
+        console.log('[USERBOT][EVENT] got message, out=' + (message && message.out) + ' len=' + ((message && (message.text||message.message)||'').length));
         if (!message || message.out) return; // Игнорируем свои сообщения
 
         const text = message.text || message.message || '';
@@ -113,12 +114,14 @@ export async function startUserbot() {
         if (text.includes('http')) return;
         if (text.includes('@')) return;
 
-        const chat = await message.getChat();
-        const isGroup = chat.isGroup || chat.isChannel;
-        const sender = await message.getSender();
+        let chat: any = null;
+        try { chat = await message.getChat(); } catch (e) { console.debug('[userbot] getChat failed:', e?.message); }
+        const isGroup = chat ? (chat.isGroup || chat.isChannel) : false;
+        let sender: any = null;
+        try { sender = await message.getSender(); } catch (e) { console.debug('[userbot] getSender failed:', e?.message); }
         const username = sender?.username;
-        const userId = sender?.id?.toString() || username || 'unknown';
-        const chatId = chat.id.toString();
+        const userId = sender?.id?.toString() || username || message.senderId?.toString() || 'unknown';
+        const chatId = (chat?.id?.toString()) || message.chatId?.toString() || message.peerId?.toString() || userId;
         const isPrivate = message.isPrivate;
 
         const { createSpan } = await import('../system/tracer.js');
@@ -183,7 +186,7 @@ export async function startUserbot() {
           isReplyToUs,
           isGroup,
           msgId: message.id,
-          chatTitle: chat.title,
+          chatTitle: chat?.title || null,
           firstName: sender?.firstName,
           span
         }, {
@@ -194,6 +197,15 @@ export async function startUserbot() {
         console.error("Userbot event handler error", e);
       }
     }, new NewMessage({}));
+
+    // Wake up the update loop: gramJS won't receive events until dialogs are fetched
+    try {
+      await clientInstance.getDialogs({ limit: 10 });
+      const me = await clientInstance.getMe();
+      console.log('[USERBOT] Listening for messages as', (me && me.username) ? '@' + me.username : (me && me.firstName) || 'account');
+    } catch (e) {
+      console.error('[USERBOT] Warmup getDialogs failed:', e?.message);
+    }
 
   } catch (e) {
     console.error('Userbot start error:', e);
