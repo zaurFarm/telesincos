@@ -30,8 +30,10 @@ import { loadControl } from '../system/loadControl.js';
 import { metrics } from '../system/metrics.js';
 
 export const aiWorker = new Worker('ai', async (job) => {
-  const { ctx: incomingCtx, payload: input } = job.data;
-  
+  // Поддерживаем оба формата: { ctx, payload } и плоский объект напрямую (как кладёт userbot.ts)
+  const incomingCtx = job.data && job.data.ctx;
+  const input = (job.data && job.data.payload) || job.data || {};
+
   // Use job.data.ctx or create a new one based on input
   const ctx = incomingCtx || createContext(input.workspaceId || 'tenant_1');
   if (job.id) ctx.jobId = job.id;
