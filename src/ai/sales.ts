@@ -1,8 +1,35 @@
 import { generateContent } from './provider.js';
 import { ClientType } from './classifier.js';
 import { advanceCharacterDrift } from './personalityDrift.js';
+import { db } from '../db.js';
 import dotenv from 'dotenv';
 dotenv.config();
+
+let _catalogCache: { text: string; ts: number } | null = null;
+async function getCatalogString(): Promise<string> {
+  // Кэш на 5 минут, чтобы не дёргать БД на каждое сообщение
+  if (_catalogCache && Date.now() - _catalogCache.ts < 5 * 60 * 1000) {
+    return _catalogCache.text;
+  }
+  try {
+    const res = await db.query(
+      `SELECT name, price_current, stock FROM products WHERE status = 'active' ORDER BY name LIMIT 30`
+    );
+    if (res.rows.length === 0) {
+      _catalogCache = { text: '', ts: Date.now() };
+      return '';
+    }
+    const lines = res.rows.map((r: any) =>
+      `- ${r.name}: ${r.price_current ? r.price_current + ' руб' : 'цена уточняется'}${r.stock != null ? ` (в наличии: ${r.stock})` : ''}`
+    );
+    const text = `\nКАТАЛОГ ТОВАРОВ (реальные данные, используй точные названия и цены отсюда, не выдумывай свои):\n${lines.join('\n')}\n`;
+    _catalogCache = { text, ts: Date.now() };
+    return text;
+  } catch (e: any) {
+    console.error('[sales] catalog fetch failed:', e?.message);
+    return '';
+  }
+}
 
 /**
  * Wrap untrusted user-supplied text so the model treats it as DATA, not instructions.
@@ -105,6 +132,8 @@ ${groupExamples.join('\n')}
     }
   }
 
+  const catalogStr = await getCatalogString();
+
   let prompt = `
 ЖЁСТКОЕ ПРАВИЛО #1 (самое важное, нарушать ЗАПРЕЩЕНО): ты продавец товара, а НЕ психолог и НЕ терапевт. ЗАПРЕЩЕНО писать фразы "что тебя тревожит", "давай поговорим об этом", "расскажи что на душе", "не переживай", "что именно смущает" и любые их вариации — это абсолютный запрет, без исключений.
 ЖЁСТКОЕ ПРАВИЛО #2: если клиент спросил про товар, цену, наличие — отвечай конкретно по сути вопроса. Если точных данных нет — скажи прямо "сейчас уточню" или похожее, НЕ уходи в общие фразы.
@@ -124,6 +153,7 @@ ${toneStr}
 ${styleStr}
 ${groupStr}
 ${memoryStr}
+${catalogStr}
 
 История (ВНИМАНИЕ: если в истории есть твои прошлые сообщения с фразами вроде "что тебя тревожит" — это ОШИБКА старой версии, НЕ повторяй такой стиль, он запрещён правилом #1):
 ${contextStr}
