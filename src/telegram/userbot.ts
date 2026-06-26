@@ -108,11 +108,6 @@ export async function startUserbot() {
         if (!message || message.out) return; // Игнорируем свои сообщения
 
         const text = message.text || message.message || '';
-        
-        // Базовые фильтры, чтобы не спамить и не тратить ресурсы ИИ
-        if (text.length < 5) return;
-        if (text.includes('http')) return;
-        if (text.includes('@')) return;
 
         let chat: any = null;
         try { chat = await message.getChat(); } catch (e) { console.debug('[userbot] getChat failed:', e?.message); }
@@ -123,6 +118,14 @@ export async function startUserbot() {
         const userId = sender?.id?.toString() || username || message.senderId?.toString() || 'unknown';
         const chatId = (chat?.id?.toString()) || message.chatId?.toString() || message.peerId?.toString() || userId;
         const isPrivate = message.isPrivate;
+
+        // Антиспам-фильтры — только для личных сообщений (личка/диалог с клиентом).
+        // Каналы/группы (товарные/конкуренты) НЕ фильтруем — оттуда собираем цены через сканер.
+        if (!isGroup) {
+          if (text.length < 5) return;
+          if (text.includes('http')) return;
+          if (text.includes('@')) return;
+        }
 
         const { createSpan } = await import('../system/tracer.js');
         const span = createSpan('webhook_received', null);
