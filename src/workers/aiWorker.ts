@@ -67,6 +67,7 @@ export const aiWorker = new Worker('ai', async (job) => {
     }
 
     if (wantsHuman(input.text)) {
+        console.log('[HANDOFF DEBUG] wantsHuman triggered for text:', JSON.stringify(input.text));
         await markAsHumanNeeded(input.userId);
         await dispatchMessage({
             chatId: input.chatId,
