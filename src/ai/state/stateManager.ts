@@ -45,7 +45,8 @@ export async function getState(userId: string | number, chatId: string | number)
   }
 
   const allConvRes = await db.query(`SELECT count(id) as c FROM conversations WHERE user_id=$1 AND chat_id=$2`, [userId, chatId]);
-  const messageCount = allConvRes.rows[0]?.c || 0;
+  const messageCount = Number(allConvRes.rows[0]?.c) || 0;
+  console.log('[STATE DEBUG] userId=' + userId + ' chatId=' + chatId + ' messageCount=' + messageCount + ' raw=' + JSON.stringify(allConvRes.rows[0]));
 
   const contextArray = convRes.rows.reverse().map(r => `${r.role === 'user' ? 'Client' : 'You'}: ${r.message}`);
   
