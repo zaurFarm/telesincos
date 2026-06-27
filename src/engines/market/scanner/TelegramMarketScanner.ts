@@ -1,4 +1,5 @@
 import { db } from '../../../db.js';
+import { generateJSON } from '../../../ai/provider.js';
 
 export interface MarketEntry {
   seller: string;
@@ -49,6 +50,65 @@ export class TelegramMarketScanner {
    * Scan recently collected messages and persist any detected offers into competitor_data.
    * Returns the structured entries found this run.
    */
+  static async parseMessageAI(text: string): Promise<{ product: string; price: number; quantity?: number }[]> {
+    if (!text || text.length < 5) return [];
+    const prompt = "Ty parser pricelistov iz Telegram-postov optovyh postavshchikov veip-tovarov. " +
+      "Iz teksta nizhe izvleki VSE tovarnye pozitsii s tsenoi v rubliah. " +
+      "Esli v tekste NET konkretnyh tovarov s tsenoi (reklama, nabor sotrudnikov, obshchie frazy) - verni pustoi massiv. " +
+      "Otvet TOLKO validnym JSON-massivom obektov vida {\"product\": \"nazvanie\", \"price\": chislo, \"quantity\": chislo ili null}.\n\nText:\n" +
+      text.slice(0, 3000) + "\n\nJSON:";
+    try {
+      const result = await generateJSON(prompt);
+      if (!Array.isArray(result)) return [];
+      return result
+        .filter((r: any) => r && r.product && Number(r.price) > 0)
+        .map((r: any) => ({ product: String(r.product).slice(0, 200), price: Number(r.price), quantity: r.quantity ? Number(r.quantity) : undefined }));
+    } catch (e: any) {
+      console.error("[MarketScanner] AI parse failed:", e?.message);
+      return [];
+    }
+  }
+
+  static async scanChannelsAI(limit = 100): Promise<MarketEntry[]> {
+    const entries: MarketEntry[] = [];
+    let rows: any[] = [];
+    try {
+      const res = await db.query(
+        "SELECT account_id AS seller, text, created_at FROM account_messages WHERE text IS NOT NULL AND length(text) > 10 ORDER BY created_at DESC LIMIT $1",
+        [limit]
+      );
+      rows = res.rows || [];
+    } catch (e: any) {
+      console.error("[MarketScanner] Failed to read messages:", e.message);
+      return entries;
+    }
+
+    for (const row of rows) {
+      const items = await this.parseMessageAI(row.text);
+      for (const item of items) {
+        const entry: MarketEntry = {
+          seller: row.seller || "unknown",
+          product: item.product,
+          price: item.price,
+          currency: "RUB",
+          quantity: item.quantity,
+          rawText: row.text,
+          timestamp: row.created_at ? new Date(row.created_at).getTime() : Date.now(),
+        };
+        entries.push(entry);
+        try {
+          await db.query(
+            "INSERT INTO competitor_data (group_name, seller, product_text, price, created_at) SELECT $1, $2, $3, $4, NOW() WHERE NOT EXISTS (SELECT 1 FROM competitor_data WHERE seller = $2 AND product_text = $3 AND price = $4)",
+            ["telegram_ai", entry.seller, entry.product, String(entry.price)]
+          );
+        } catch (e: any) {
+          console.error("[MarketScanner] Failed to persist AI entry:", e.message);
+        }
+      }
+    }
+    return entries;
+  }
+
   static async scanChannels(limit = 500): Promise<MarketEntry[]> {
     const entries: MarketEntry[] = [];
 
