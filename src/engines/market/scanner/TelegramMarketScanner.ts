@@ -55,10 +55,11 @@ export class TelegramMarketScanner {
     const prompt = "Ty parser pricelistov iz Telegram-postov optovyh postavshchikov veip-tovarov. " +
       "Iz teksta nizhe izvleki VSE tovarnye pozitsii s tsenoi v rubliah. " +
       "Esli v tekste NET konkretnyh tovarov s tsenoi (reklama, nabor sotrudnikov, obshchie frazy) - verni pustoi massiv. " +
-      "Otvet TOLKO validnym JSON-massivom obektov vida {\"product\": \"nazvanie\", \"price\": chislo, \"quantity\": chislo ili null}.\n\nText:\n" +
+      "Otvet TOLKO validnym JSON-obektom formata {\"items\": [{\"product\": \"nazvanie\", \"price\": chislo, \"quantity\": chislo ili null}]}. Esli tovarov net - {\"items\": []}.\n\nText:\n" +
       text.slice(0, 3000) + "\n\nJSON:";
     try {
-      const result = await generateJSON(prompt);
+      const parsed = await generateJSON(prompt);
+      const result = Array.isArray(parsed) ? parsed : (parsed?.items || []);
       if (!Array.isArray(result)) return [];
       return result
         .filter((r: any) => r && r.product && Number(r.price) > 0)
