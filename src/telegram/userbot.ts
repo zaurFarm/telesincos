@@ -139,6 +139,18 @@ export async function startUserbot() {
           await logRisk(userId, risk.risk, risk.flags);
         }
 
+        // 📊 MARKET SCANNER FEED: сохраняем посты из каналов/групп для парсинга цен конкурентов
+        if (isGroup) {
+          try {
+            await pool.query(
+              `INSERT INTO account_messages (account_id, text) VALUES ($1, $2)`,
+              [chatId, text]
+            );
+          } catch (e: any) {
+            console.error('[MarketFeed] Failed to save account_message:', e?.message);
+          }
+        }
+
         // 🏫 CHAT LEARNING ENGINE (RAG)
         if (isGroup && shouldLearn(text)) {
            // We might want to check against a whitelisted / blacklisted array of chats here
