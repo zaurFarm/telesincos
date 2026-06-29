@@ -49,7 +49,7 @@ export const crmWorker = new Worker('crm', async (job) => {
   }
 
   if (job.name === 'market_scan') {
-    const found = await TelegramMarketScanner.scanChannels();
+    const found = await TelegramMarketScanner.scanChannelsAI(50); // AI-парсер, лимит 50 сообщений за прогон (экономия бюджета OpenAI)
     if (found.length > 0) {
       await db.query(
         `INSERT INTO actions (type, chat, user_name, content, reason) VALUES ($1, $2, $3, $4, $5)`,
