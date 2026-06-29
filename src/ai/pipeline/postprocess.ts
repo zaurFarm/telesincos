@@ -36,10 +36,25 @@ function conversationalHumanize(text: string) {
   return text;
 }
 
+function applyMood(text: string, mood?: string) {
+  if (!mood) return text;
+  if (mood === 'playful' && Math.random() > 0.5 && !text.includes('\ud83d\ude09') && !text.includes('\ud83d\ude09')) {
+    return text + ' \ud83d\ude09';
+  }
+  if (mood === 'lazy' && text.length > 60) {
+    return text.replace(/^(пожалуйста,?\s*|конечно,?\s*)/i, '');
+  }
+  if (mood === 'busy') {
+    return text.replace(/\s*(если что,?\s*|кстати,?\s*)/gi, '');
+  }
+  return text;
+}
+
 export async function postprocess(reply: string, state: any, decision: any) {
   let text = humanizeText(reply);
   text = applyChaos(text, decision.strategy);
   text = conversationalHumanize(text);
+  text = applyMood(text, state.mood);
 
   // Anti-Degradation Guards
   const minResponseLength = 5;

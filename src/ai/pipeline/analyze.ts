@@ -3,6 +3,7 @@ import { detectEmotion } from '../emotion.js';
 import { detectClientType } from '../classifier.js';
 import { extractPrice } from '../pricing/pricingEngine.js';
 import { db } from '../../db.js';
+import { getPersonality, updateMood } from '../personality.js';
 
 export async function analyze(input: any, state: any) {
   const [intent, emotion] = await Promise.all([
@@ -52,6 +53,11 @@ export async function analyze(input: any, state: any) {
       const avg = state.userProfile.avgPrice || 0;
       state.userProfile.avgPrice = avg === 0 ? userPrice : (avg + userPrice) / 2;
     }
+  }
+
+  if (input.userId) {
+    updateMood(String(input.userId), input.text);
+    state.mood = getPersonality(String(input.userId)).mood;
   }
 
   let alreadyOfferedGroup = false;

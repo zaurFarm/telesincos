@@ -1,4 +1,5 @@
 import { generateSalesReply, generateSmartReply } from '../sales.js';
+import { decidePaymentMethod, generatePaymentReply, maybeOfferPickup } from '../paymentStrategy.js';
 import { db } from '../../db.js';
 import { getSimilarMessages, getSimilarGroupMessages } from '../memory/retrieval.js';
 import { mergeStyles } from '../memory/engines.js';
@@ -44,7 +45,11 @@ export async function generate({ input, state, decision, analysis }: any) {
   }
 
   if (decision.strategy === 'close') {
-    return generateSalesReply(input.text);
+    const base = generateSalesReply(input.text);
+    const pickup = maybeOfferPickup(input.text.toLowerCase());
+    if (pickup) return `${base} ${pickup}`;
+    const trustLevel = decidePaymentMethod(decision.trustScore ?? state.userProfile?.trustScore ?? 0.5);
+    return `${base} ${generatePaymentReply(trustLevel)}`;
   }
 
   // Retrieve Vector Memory for similar situations (hybrid learning)

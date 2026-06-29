@@ -90,6 +90,7 @@ export async function decide({ input, state, analysis }: any) {
       strategy: 'close',
       delay: 1500,
       finalPrice,
+      trustScore,
       experimentId: activeExperimentId
     };
   }
