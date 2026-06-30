@@ -87,11 +87,27 @@ if (bot) {
         return;
       }
 
-      // 🤖 AI ответ (если тегнули бота)
+      // 🤖 AI ответ (если тегнули бота или личка)
+      const isPrivate = msg.chat.type === 'private';
       const botInfo = await bot.getMe();
-      if (text.includes(`@${botInfo.username}`)) {
+      const isMentioned = text.includes(`@${botInfo.username}`);
+      if (isMentioned || isPrivate) {
+        const cleanText = text.replace(`@${botInfo.username}`, '').trim();
         const styles = await getUserStyle();
-        const reply = await generateReply(text.replace(`@${botInfo.username}`, '').trim(), styles);
+        // Загружаем историю диалога с этим юзером
+        let history: string[] = [];
+        try {
+          const { rows } = await (await import('../../src/db.js')).db.query(
+            `SELECT role, message FROM conversations
+             WHERE user_id = $1
+             ORDER BY created_at DESC LIMIT 15`,
+            [user.id.toString()]
+          );
+          history = rows.reverse().map((r: any) =>
+            `${r.role === 'user' ? 'Собеседник' : 'Ты'}: ${r.message}`
+          );
+        } catch(e) { /* Redis/DB недоступен — отвечаем без истории */ }
+        const reply = await generateReply(cleanText, styles, history);
 
         if (reply) {
           await bot.sendMessage(msg.chat.id, reply, {

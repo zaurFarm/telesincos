@@ -3,24 +3,26 @@ import { ClientType } from './classifier.js';
 
 export async function generateReply(
   text: string,
-  styleExamples: string[]
+  styleExamples: string[],
+  history: string[] = []
 ): Promise<string> {
 
   const style = styleExamples.slice(-5).join('\n');
+  const historyText = history.length > 0
+    ? `\nИстория нашего диалога (от старых к новым):\n${history.slice(-12).join('\n')}\n`
+    : '';
 
   const prompt = `
-Ты отвечаешь в Telegram.
-
-Стиль:
+Ты — живой участник Telegram-чата. Ты уже общаешься с этим человеком.
+НИКОГДА не пиши "Привет", "Здравствуй", "Добрый день" — ты уже в разговоре.
+Отвечай строго на последнее сообщение, учитывая всю историю диалога.
+Коротко, по делу, как живой человек. Без формальностей. Без "как ИИ".
+Если не знаешь — честно скажи, не придумывай.
+${historyText}
+Стиль общения:
 ${style}
 
-Правила:
-- Коротко
-- По делу
-- Как живой человек
-- Без "как ИИ"
-
-Сообщение:
+Последнее сообщение собеседника:
 "${text}"
 
 Ответ:
