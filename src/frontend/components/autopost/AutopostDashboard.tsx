@@ -172,6 +172,8 @@ const initialState: State = {
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
+    case 'SET_SOURCES': return { ...state, sources: action.payload };
+    case 'SET_TARGETS': return { ...state, targets: action.payload };
     case 'UPDATE_ROUTE_CONFIG': return { ...state, routeConfig: { ...state.routeConfig, ...action.payload } };
     case 'OPEN_MENU': return { ...state, contextMenu: action.payload };
     case 'CLOSE_MENU': return { ...state, contextMenu: null };
