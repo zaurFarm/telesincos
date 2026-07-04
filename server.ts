@@ -312,7 +312,7 @@ app.post('/api/autopost/:id/reject', requireAuth, rejectPost);
 
 app.get('/api/accounts', requireAuth, async (req, res) => {
   try {
-    const data = await pool.query(`SELECT * FROM system_accounts ORDER BY created_at DESC`);
+    const data = await pool.query(`SELECT id, phone, status, state, role, trust_score, daily_limit, sent_today, created_at FROM farm_accounts ORDER BY created_at DESC`);
     // Removed mockup account insertion for production
     // Accounts will be populated organically
     res.json(data.rows);

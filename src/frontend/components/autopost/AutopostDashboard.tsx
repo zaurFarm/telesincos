@@ -321,10 +321,10 @@ export const AutopostDashboard = ({
         if (accounts && accounts.length > 0) {
           const sources = accounts.map((a: any, i: number) => ({
             id: `acc-${a.id || i}`,
-            title: a.username || a.phone || `Аккаунт ${i+1}`,
+            title: a.phone || a.username || `Аккаунт ${i+1}`,
             selected: false,
             role: 'owner' as Role,
-            link: a.username ? `https://t.me/${a.username}` : '#'
+            link: '#'
           }));
           dispatch({ type: 'SET_SOURCES', payload: sources });
         }
