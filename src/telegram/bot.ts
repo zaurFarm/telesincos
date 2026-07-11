@@ -40,6 +40,16 @@ if (bot) {
         text
       });
 
+      // 🧠 сохраняем реплику юзера в conversations (для памяти диалога)
+      try {
+        const { db } = await import('../../src/db.js');
+        await db.query(
+          `INSERT INTO conversations (user_id, chat_id, role, message)
+           VALUES ($1, $2, 'user', $3)`,
+          [user.id.toString(), msg.chat.id.toString(), text]
+        );
+      } catch(e) { /* не блокируем обработку */ }
+
       // 🚫 проверка дублей
       if (msg.chat.type === 'group' || msg.chat.type === 'supergroup') {
         if (await isDuplicate(text)) {
@@ -113,6 +123,14 @@ if (bot) {
           await bot.sendMessage(msg.chat.id, reply, {
             reply_to_message_id: msg.message_id
           });
+          try {
+            const { db } = await import('../../src/db.js');
+            await db.query(
+              `INSERT INTO conversations (user_id, chat_id, role, message)
+               VALUES ($1, $2, 'assistant', $3)`,
+              [user.id.toString(), msg.chat.id.toString(), reply]
+            );
+          } catch(e) { /* не блокируем */ }
 
           await logAction({
             type: 'reply',
