@@ -43,11 +43,7 @@ if (bot) {
       // 🧠 сохраняем реплику юзера в conversations (для памяти диалога)
       try {
         const { db } = await import('../../src/db.js');
-        await db.query(
-          `INSERT INTO conversations (user_id, chat_id, role, message)
-           VALUES ($1, $2, 'user', $3)`,
-          [user.id.toString(), msg.chat.id.toString(), text]
-        );
+        const TEN = process.env.DEFAULT_TENANT || 'tenant_1'; await db.withTenant(TEN, (cl) => cl.query(`INSERT INTO conversations (user_id, chat_id, role, message, tenant_id) VALUES ($1, $2, 'user', $3, $4)`, [user.id.toString(), msg.chat.id.toString(), text, TEN]));
       } catch(e) { /* не блокируем обработку */ }
 
       // 🚫 проверка дублей
