@@ -26,8 +26,8 @@ export function analyzeBehavior(messages: any[]) {
 }
 
 export function shouldReply(behavior: any) {
-  if (!behavior) return true;
-  return Math.random() < (behavior.reply_probability || 1);
+  // Always reply to client messages
+  return true;
 }
 
 export function getHumanDelay(behavior: any) {
