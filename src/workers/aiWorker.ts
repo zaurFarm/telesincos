@@ -108,6 +108,11 @@ export const aiWorker = new Worker('ai', async (job) => {
     // 1. PREPROCESS
     const pre = await preprocess(input);
     if (pre.drop) return;
+    // Save user message to conversations
+    await db.withTenant(ctx.tenantId, async (client) => {
+      await client.query(`INSERT INTO conversations (user_id, chat_id, role, message, tenant_id) VALUES ($1, $2, 'user', $3, $4) ON CONFLICT DO NOTHING`, [String(input.userId), String(input.chatId), input.text, ctx.tenantId]);
+    }).catch((e: any) => logger.error({ type: 'save_user_msg_error', error: e.message }));
+
 
     // 2. LOAD STATE
     const state = await getState(input.userId, input.chatId);
