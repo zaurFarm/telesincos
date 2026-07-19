@@ -1,18 +1,18 @@
-import { GoogleGenAI } from "@google/genai";
+import OpenAI from 'openai';
 import dotenv from 'dotenv';
 dotenv.config();
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 export async function getEmbedding(text: string): Promise<number[]> {
   try {
-    const res = await ai.models.embedContent({
-      model: "text-embedding-004",
-      contents: text,
+    const res = await openai.embeddings.create({
+      model: 'text-embedding-3-small',
+      input: text.slice(0, 8000),
     });
-    return res.embeddings?.[0]?.values || [];
+    return res.data[0]?.embedding || [];
   } catch (e) {
-    console.error("Embedding generation failed:", e);
+    console.error('Embedding generation failed:', e);
     return [];
   }
 }
