@@ -16,6 +16,9 @@ async function enqueueWithLock(taskName: string, queue: any, queueArg: any) {
   }
 }
 
+import { autoJoinVapeChannels } from '../jobs/autoJoinChannels.js';
+
+
 export async function startCronJobs() {
   bootAllListeners().catch((e: any) => {
      if (e.code !== 'ECONNREFUSED' && !e.message?.includes('ECONNREFUSED')) {
@@ -32,7 +35,9 @@ export async function startCronJobs() {
   intervals.push(setInterval(() => enqueueWithLock('slo_check', crmQueue, {}), 5 * 60 * 1000));
   intervals.push(setInterval(() => enqueueWithLock('market_scan', crmQueue, {}), 30 * 60 * 1000));
 
+  intervals.push(setInterval(() => autoJoinVapeChannels().catch((e: any) => logger.error({ type: 'autojoin_error', error: String(e) })), 24 * 60 * 60 * 1000));
   // Initial enqueues for immediate startup
+  autoJoinVapeChannels().catch((e: any) => logger.error({ type: 'autojoin_error', error: String(e) }));
   enqueueWithLock('warmup', crmQueue, {});
   enqueueWithLock('traffic', crmQueue, {});
   enqueueWithLock('knowledge_update', crmQueue, {});

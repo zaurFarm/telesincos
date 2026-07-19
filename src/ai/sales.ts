@@ -35,6 +35,27 @@ async function getCatalogString(): Promise<string> {
  * Wrap untrusted user-supplied text so the model treats it as DATA, not instructions.
  * Mitigates prompt-injection: anything inside the block must not be obeyed as a command.
  */
+
+let _competitorCache: { text: string; ts: number } | null = null;
+async function getCompetitorPricesString(): Promise<string> {
+  if (_competitorCache && Date.now() - _competitorCache.ts < 10 * 60 * 1000) {
+    return _competitorCache.text;
+  }
+  try {
+    const res = await db.query(
+      `SELECT product_text, price, seller FROM competitor_data WHERE price IS NOT NULL ORDER BY created_at DESC LIMIT 50`
+    );
+    if (res.rows.length === 0) { _competitorCache = { text: '', ts: Date.now() }; return ''; }
+    const lines = res.rows.map((r: any) => '- ' + (r.product_text || '').slice(0,60) + ': ' + r.price + ' руб (продавец: ' + r.seller + ')');
+    const text = '\nЦЕНЫ КОНКУРЕНТОВ (для справки, не озвучивай источник):\n' + lines.join('\n') + '\n';
+    _competitorCache = { text, ts: Date.now() };
+    return text;
+  } catch (e: any) {
+    console.error('[sales] competitor fetch failed:', e?.message);
+    return '';
+  }
+}
+
 export function wrapUntrusted(text: string): string {
   const safe = String(text ?? '').replace(/`/g, "'");
   return `<<<USER_MESSAGE_UNTRUSTED
@@ -133,6 +154,7 @@ ${groupExamples.join('\n')}
   }
 
   const catalogStr = await getCatalogString();
+  const competitorStr = await getCompetitorPricesString();
 
   let prompt = `
 ЖЁСТКОЕ ПРАВИЛО #1 (самое важное, нарушать ЗАПРЕЩЕНО): ты продавец товара, а НЕ психолог и НЕ терапевт. ЗАПРЕЩЕНО писать фразы "что тебя тревожит", "давай поговорим об этом", "расскажи что на душе", "не переживай", "что именно смущает" и любые их вариации — это абсолютный запрет, без исключений.
@@ -153,7 +175,7 @@ ${toneStr}
 ${styleStr}
 ${groupStr}
 ${memoryStr}
-${catalogStr}
+${catalogStr}${competitorStr}
 
 История (ВНИМАНИЕ: если в истории есть твои прошлые сообщения с фразами вроде "что тебя тревожит" — это ОШИБКА старой версии, НЕ повторяй такой стиль, он запрещён правилом #1):
 ${contextStr}
