@@ -13,23 +13,9 @@ interface Endpoint {
   link: string;
 }
 
-const MOCK_SOURCES: Endpoint[] = [
-  { id: 'src-1', title: 'ТелеТорг: Покупка...', selected: false, role: 'owner', link: 'https://t.me/teletorg_vip' },
-  { id: 'src-2', title: 'Техночат', selected: false, role: 'participant', link: 'https://t.me/technochat_public' },
-  { id: 'src-3', title: 'ФЕЛИКС ПОГОСЯН', selected: false, role: 'other', link: 'https://t.me/felix_channel' },
-  { id: 'src-4', title: 'پروکسی | Proxy...', selected: false, role: 'other', link: 'https://t.me/proxy_ir' },
-  { id: 'src-5', title: 'NLYost, is my world', selected: false, role: 'participant', link: 'https://t.me/nlyost' },
-  { id: 'src-6', title: 'CHH__XXXXXXXXXXXX', selected: true, role: 'owner', link: 'https://t.me/ch_xxxx' },
-  { id: 'src-7', title: 'CH_0011', selected: true, role: 'owner', link: 'https://t.me/ch_0011' },
-];
+const MOCK_SOURCES: Endpoint[] = [];
 
-const MOCK_TARGETS: Endpoint[] = [
-  { id: 'tgt-1', title: 'TG__AUSender / To', selected: true, role: 'owner', link: 'https://t.me/ausender' },
-  { id: 'tgt-2', title: 'Windows10. SOFT', selected: false, role: 'participant', link: 'https://t.me/win10_soft' },
-  { id: 'tgt-3', title: 'Crypto Traders', selected: false, role: 'other', link: 'https://t.me/crypto_trades' },
-  { id: 'tgt-4', title: 'My Private Backup', selected: false, role: 'owner', link: 'https://t.me/backup_private' },
-  { id: 'tgt-5', title: 'Dev Community', selected: false, role: 'participant', link: 'https://t.me/dev_comm' },
-];
+const MOCK_TARGETS: Endpoint[] = [];
 
 interface RouteItem {
   id: string;
@@ -39,15 +25,7 @@ interface RouteItem {
   selected: boolean;
 }
 
-const MOCK_ROUTES: RouteItem[] = [
-  { 
-      id: 'rt-1', 
-      from: [MOCK_SOURCES[5]], 
-      to: [MOCK_TARGETS[0]], 
-      delay: '10-20', 
-      selected: true 
-  },
-];
+const MOCK_ROUTES: RouteItem[] = [];
 
 // --- STATE MANAGEMENT ---
 interface ContextMenuData {

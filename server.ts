@@ -191,6 +191,90 @@ const strictLimiter = rateLimit({
 app.use('/api/', apiLimiter);
 
 app.use('/api', requireAuth);
+
+// ============================================
+// 🔐 AUTH — Регистрация и вход пользователей
+// ============================================
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) return res.status(400).json({ error: 'Email и пароль обязательны' });
+    if (password.length < 8) return res.status(400).json({ error: 'Пароль минимум 8 символов' });
+    
+    const bcrypt = await import('bcryptjs');
+    const existing = await pool.query('SELECT id FROM saas_users WHERE email = $1', [email.toLowerCase()]);
+    if (existing.rows.length > 0) return res.status(409).json({ error: 'Пользователь с таким email уже существует' });
+    
+    const hash = await bcrypt.default.hash(password, 10);
+    const userRes = await pool.query(
+      'INSERT INTO saas_users (email, password, plan) VALUES ($1, $2, $3) RETURNING id, email, plan, created_at',
+      [email.toLowerCase(), hash, 'free']
+    );
+    const user = userRes.rows[0];
+    
+    // Создаём workspace для пользователя
+    const wsRes = await pool.query(
+      'INSERT INTO workspaces (owner_id, name) VALUES ($1, $2) RETURNING id',
+      [user.id, email.split('@')[0]]
+    ).catch(() => ({ rows: [{ id: user.id }] }));
+    
+    const token = jwt.sign(
+      { id: user.id, email: user.email, plan: user.plan, tenantId: wsRes.rows[0].id },
+      process.env.JWT_SECRET!,
+      { expiresIn: '30d' }
+    );
+    
+    res.json({ token, user: { id: user.id, email: user.email, plan: user.plan } });
+  } catch (e: any) {
+    console.error('Register error:', e);
+    res.status(500).json({ error: 'Ошибка регистрации' });
+  }
+});
+
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) return res.status(400).json({ error: 'Email и пароль обязательны' });
+    
+    const bcrypt = await import('bcryptjs');
+    const userRes = await pool.query(
+      'SELECT su.*, w.id as workspace_id FROM saas_users su LEFT JOIN workspaces w ON w.owner_id = su.id WHERE su.email = $1 LIMIT 1',
+      [email.toLowerCase()]
+    );
+    
+    if (userRes.rows.length === 0) return res.status(401).json({ error: 'Неверный email или пароль' });
+    const user = userRes.rows[0];
+    
+    const valid = await bcrypt.default.compare(password, user.password);
+    if (!valid) return res.status(401).json({ error: 'Неверный email или пароль' });
+    
+    const token = jwt.sign(
+      { id: user.id, email: user.email, plan: user.plan, tenantId: user.workspace_id || user.id },
+      process.env.JWT_SECRET!,
+      { expiresIn: '30d' }
+    );
+    
+    res.json({ token, user: { id: user.id, email: user.email, plan: user.plan } });
+  } catch (e: any) {
+    console.error('Login error:', e);
+    res.status(500).json({ error: 'Ошибка входа' });
+  }
+});
+
+app.get('/api/auth/me', requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const userRes = await pool.query(
+      'SELECT id, email, plan, created_at FROM saas_users WHERE id = $1',
+      [req.user?.id]
+    );
+    if (userRes.rows.length === 0) return res.status(404).json({ error: 'Пользователь не найден' });
+    res.json(userRes.rows[0]);
+  } catch (e) {
+    res.status(500).json({ error: 'Ошибка' });
+  }
+});
+
+
 app.use('/api', contextMiddleware);
 
 // ============================================
