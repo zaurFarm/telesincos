@@ -1,8 +1,16 @@
-export function analyzeGroup(description?: string) {
-  const desc = (description || "").toLowerCase();
+const VAPE_KEYWORDS = [
+  'вейп', 'vape', 'жидкост', 'под', 'pod', 'hqd', 'puffmi', 'waka',
+  'elf bar', 'elfbar', 'снюс', 'одноразк', 'электронн', 'сигарет',
+  'испаритель', 'атомайзер', 'солевой никотин', 'опт', 'табак'
+];
+
+export function analyzeGroup(title?: string, description?: string) {
+  const text = ((title || '') + ' ' + (description || '')).toLowerCase();
+  const isRelevant = VAPE_KEYWORDS.some(k => text.includes(k));
   return {
-    allowAds: !desc.includes("запрещена реклама"),
-    hasModeration: desc.includes("админ") || desc.includes("правил"),
-    risky: desc.includes("бан") || desc.includes("блок")
+    allowAds: !text.includes('запрещена реклама'),
+    hasModeration: text.includes('админ') || text.includes('правил'),
+    risky: text.includes('бан') || text.includes('блок'),
+    isRelevant
   };
 }

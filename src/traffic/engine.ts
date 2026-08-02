@@ -38,8 +38,8 @@ export async function runTraffic() {
       let accountJoinsThisCycle = 0;
       for (const group of groups) {
         if (group.username) {
-            const analysis = analyzeGroup(group.title || "");
-            if (!analysis.risky) {
+            const analysis = analyzeGroup(group.title || "", group.about || "");
+            if (analysis.isRelevant && !analysis.risky) {
               await joinGroup(client, group.username);
               joinsToday++;
               accountJoinsThisCycle++;

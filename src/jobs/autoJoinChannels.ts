@@ -4,11 +4,18 @@ import { db } from '../db.js';
 import dotenv from 'dotenv';
 dotenv.config();
 
+// Убраны слишком общие слова ("pod", "сиги"), которые давали много нерелевантных совпадений
 const KEYWORDS = [
   'vape', 'вейп', 'электронные сигареты', 'hqd', 'puffmi', 'waka',
-  'elf bar', 'elfbar', 'pod', 'снюс', 'табак опт', 'вейп опт',
-  'одноразки', 'жидкость вейп', 'поставщик вейп', 'вейп оптом'
+  'elf bar', 'elfbar', 'снюс', 'табак опт', 'вейп опт',
+  'одноразки', 'жидкость вейп', 'поставщик вейп', 'вейп оптом', 'вейпшоп'
 ];
+
+function isRelevantChat(chat: any): boolean {
+  const text = ((chat.title || '') + ' ' + (chat.about || '')).toLowerCase();
+  const relevantWords = ['вейп', 'vape', 'жидкост', 'hqd', 'puffmi', 'waka', 'elf bar', 'elfbar', 'снюс', 'одноразк', 'электронн', 'сигарет', 'испаритель'];
+  return relevantWords.some(w => text.includes(w));
+}
 
 export async function autoJoinVapeChannels() {
   const client = new TelegramClient(
@@ -26,6 +33,7 @@ export async function autoJoinVapeChannels() {
         const chats = result.chats || [];
         for (const chat of chats) {
           if (!chat.username) continue;
+          if (!isRelevantChat(chat)) { console.debug('[AutoJoin] Skip (не по теме): @' + chat.username); continue; }
           try {
             const existing = await db.query('SELECT 1 FROM joined_channels WHERE channel_id = $1', [String(chat.id)]).catch(() => ({ rows: [] }));
             if (existing.rows.length > 0) continue;

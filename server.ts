@@ -190,7 +190,6 @@ const strictLimiter = rateLimit({
 
 app.use('/api/', apiLimiter);
 
-app.use('/api', requireAuth);
 
 // ============================================
 // 🔐 AUTH — Регистрация и вход пользователей
@@ -273,6 +272,9 @@ app.get('/api/auth/me', requireAuth, async (req: AuthRequest, res) => {
     res.status(500).json({ error: 'Ошибка' });
   }
 });
+
+app.use('/api', requireAuth);
+
 
 
 app.use('/api', contextMiddleware);
