@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { getTenantId } from './context.js';
 
 export interface GlobalSettings {
   moderationEnabled: boolean;
@@ -34,99 +35,118 @@ export interface GlobalSettings {
   autoPostEnabled: boolean;
   autoPostIntervalMin: number;
   autoPostRules: string;
+  botMode: 'moderator' | 'companion' | 'both' | 'off';
   [key: string]: any;
 }
 
-let botSettings: GlobalSettings = {
-  moderationEnabled: true,
-  chatEnabled: true,
-  moderationPrompt: "Проанализируй это сообщение на предмет нарушения Условий использования Telegram или общих правил сообщества.",
-  chatPrompt: "Ты полезный, человекоподобный ассистент в Telegram-группе. Отвечай естественно, кратко, без воды и спама. Будь вежлив и не звучи как робот. Отвечай на русском языке.",
-  maxVideoSizeMB: 20,
-  preventDuplicates: true,
-  duplicateDistance: 10,
-  externalApiToken: crypto.randomBytes(16).toString('hex'),
-  proxyIp: "",
-  proxyPort: "",
-  proxyUser: "",
-  proxyPass: "",
-  aiProvider: 'openai',
-  useOllama: false,
-  ollamaEndpoint: process.env.OLLAMA_URL || "http://localhost:11434",
-  ollamaModel: process.env.OLLAMA_MODEL || "llama3",
-  openAiKey: process.env.OPENAI_API_KEY || "",
-  openAiModel: "gpt-4o-mini",
-  proactiveSales: false,
-  adminChatId: 0,
-  targetForwardGroup: 0,
-  forwardMode: 'copy',
-  autoReplyKeywords: '',
-  autoReplyPrompt: '',
-  apiId: '',
-  apiHash: '',
-  phoneNumber: '',
-  sessionString: '',
-  useUserbot: false,
-  connectionMode: 'hybrid',
-  autoPostEnabled: false,
-  autoPostIntervalMin: 60,
-  autoPostRules: ''
-};
-
-export function getSettings(): GlobalSettings {
-  return botSettings;
+function defaultSettings(): GlobalSettings {
+  return {
+    moderationEnabled: true,
+    chatEnabled: true,
+    moderationPrompt: "Проанализируй это сообщение на предмет нарушения Условий использования Telegram или общих правил сообщества.",
+    chatPrompt: "Ты полезный, человекоподобный ассистент в Telegram-группе. Отвечай естественно, кратко, без воды и спама. Будь вежлив и не звучи как робот. Отвечай на русском языке.",
+    maxVideoSizeMB: 20,
+    preventDuplicates: true,
+    duplicateDistance: 10,
+    externalApiToken: crypto.randomBytes(16).toString('hex'),
+    proxyIp: "",
+    proxyPort: "",
+    proxyUser: "",
+    proxyPass: "",
+    aiProvider: 'openai',
+    useOllama: false,
+    ollamaEndpoint: process.env.OLLAMA_URL || "http://localhost:11434",
+    ollamaModel: process.env.OLLAMA_MODEL || "llama3",
+    openAiKey: process.env.OPENAI_API_KEY || "",
+    openAiModel: "gpt-4o-mini",
+    proactiveSales: false,
+    adminChatId: 0,
+    targetForwardGroup: 0,
+    forwardMode: 'copy',
+    autoReplyKeywords: '',
+    autoReplyPrompt: '',
+    apiId: '',
+    apiHash: '',
+    phoneNumber: '',
+    sessionString: '',
+    useUserbot: false,
+    connectionMode: 'hybrid',
+    autoPostEnabled: false,
+    autoPostIntervalMin: 60,
+    autoPostRules: '',
+    botMode: 'both'
+  };
 }
 
-export function updateSettings(newSettings: Partial<GlobalSettings>) {
-  // Translate legacy useOllama into aiProvider if needed
+// In-memory кэш настроек по каждому tenant (workspace), чтобы не бить в БД на каждый вызов
+const settingsCache = new Map<string, GlobalSettings>();
+
+function resolveTenantId(explicitTenantId?: string): string {
+  return explicitTenantId || getTenantId() || 'tenant_1';
+}
+
+// Синхронное чтение из кэша (используется в местах, где нет await).
+// Если для тенанта ещё ничего не загружено — отдаём дефолт и в фоне подгружаем из БД.
+export function getSettings(explicitTenantId?: string): GlobalSettings {
+  const tenantId = resolveTenantId(explicitTenantId);
+  const cached = settingsCache.get(tenantId);
+  if (cached) return cached;
+
+  const fresh = defaultSettings();
+  settingsCache.set(tenantId, fresh);
+  void loadSettingsForTenant(tenantId);
+  return fresh;
+}
+
+export function updateSettings(newSettings: Partial<GlobalSettings>, explicitTenantId?: string) {
+  const tenantId = resolveTenantId(explicitTenantId);
+  const current = settingsCache.get(tenantId) || defaultSettings();
+
   if (newSettings.useOllama === true) {
     newSettings.aiProvider = 'ollama';
-  } else if (newSettings.useOllama === false && botSettings.aiProvider === 'ollama') {
+  } else if (newSettings.useOllama === false && current.aiProvider === 'ollama') {
     newSettings.aiProvider = 'openai';
   }
-  
-  botSettings = { ...botSettings, ...newSettings };
 
-  // Persist to DB (fire-and-forget; failures are logged, not fatal)
-  void persistSettings();
+  const updated = { ...current, ...newSettings };
+  settingsCache.set(tenantId, updated);
+  void persistSettings(tenantId, updated);
 }
 
-// Persist the full settings object into the global_settings key-value table.
-async function persistSettings(): Promise<void> {
+async function persistSettings(tenantId: string, settings: GlobalSettings): Promise<void> {
   try {
     const { db } = await import('../db.js');
-    await db.query(
-      `INSERT INTO global_settings (id, settings, updated_at)
-       VALUES (1, $1::jsonb, NOW())
-       ON CONFLICT (id) DO UPDATE SET settings = $1::jsonb, updated_at = NOW()`,
-      [JSON.stringify(botSettings)]
-    );
+    await db.withTenant(tenantId, (client: any) => client.query(
+      `INSERT INTO workspace_settings (workspace_id, settings, updated_at)
+       VALUES ($1::uuid, $2::jsonb, NOW())
+       ON CONFLICT (workspace_id) DO UPDATE SET settings = $2::jsonb, updated_at = NOW()`,
+      [tenantId, JSON.stringify(settings)]
+    ));
   } catch (e: any) {
-    console.error('[Settings] Failed to persist settings to DB:', e.message);
+    console.error(`[Settings] Failed to persist settings for tenant ${tenantId}:`, e.message);
   }
 }
 
-// Load settings from DB at startup, merging over the in-memory defaults.
-// env-derived secrets (openAiKey, etc.) remain as fallback if not stored in DB.
-export async function loadSettings(): Promise<void> {
+async function loadSettingsForTenant(tenantId: string): Promise<void> {
   try {
     const { db } = await import('../db.js');
-    await db.query(`
-      CREATE TABLE IF NOT EXISTS global_settings (
-        id INTEGER PRIMARY KEY,
-        settings JSONB DEFAULT '{}',
-        updated_at TIMESTAMP DEFAULT NOW()
-      )
-    `);
-    const res = await db.query('SELECT settings FROM global_settings WHERE id = 1');
+    const res = await db.withTenant(tenantId, (client: any) => client.query(
+      'SELECT settings FROM workspace_settings WHERE workspace_id = $1::uuid',
+      [tenantId]
+    ));
     if (res.rows.length && res.rows[0].settings) {
       const stored = res.rows[0].settings;
-      botSettings = { ...botSettings, ...stored };
-      console.log('[Settings] Loaded persisted settings from DB.');
-    } else {
-      console.log('[Settings] No persisted settings found, using defaults.');
+      const merged = { ...defaultSettings(), ...stored };
+      settingsCache.set(tenantId, merged);
     }
   } catch (e: any) {
-    console.error('[Settings] Failed to load settings from DB:', e.message);
+    // tenant_1 (legacy) или невалидный UUID тенанта — не критично, остаёмся на дефолтах
+    console.debug(`[Settings] No persisted settings for tenant ${tenantId} (${e.message})`);
   }
+}
+
+// Предзагрузка настроек площадки при старте процесса (для tenant_1 / legacy-режима)
+export async function loadSettings(): Promise<void> {
+  await loadSettingsForTenant('tenant_1');
+  console.log('[Settings] Per-tenant settings system initialized.');
 }

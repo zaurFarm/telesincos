@@ -280,6 +280,35 @@ app.use('/api', requireAuth);
 app.use('/api', contextMiddleware);
 
 // ============================================
+// 🔗 TELEGRAM LINK — привязка личного Telegram к аккаунту
+// ============================================
+app.post('/api/telegram/link-code', requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const code = Math.random().toString(36).substring(2, 10).toUpperCase();
+    await pool.query(
+      `INSERT INTO telegram_link_codes (code, saas_user_id, tenant_id) VALUES ($1, $2, $3)`,
+      [code, req.user?.id, req.user?.tenantId]
+    );
+    const botUsername = process.env.VITE_TELEGRAM_BOT_USERNAME || 'telesync_bot';
+    res.json({ code, link: `https://t.me/${botUsername}?start=${code}` });
+  } catch (e: any) {
+    console.error('Link code error:', e);
+    res.status(500).json({ error: 'Не удалось создать код привязки' });
+  }
+});
+
+app.get('/api/telegram/link-status', requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const r = await pool.query('SELECT telegram_id FROM saas_users WHERE id = $1', [req.user?.id]);
+    res.json({ linked: !!(r.rows[0]?.telegram_id), telegramId: r.rows[0]?.telegram_id || null });
+  } catch (e) {
+    res.status(500).json({ error: 'Ошибка проверки статуса' });
+  }
+});
+
+
+
+// ============================================
 // 📊 STATUS & SYNC STREAM
 // ============================================
 
@@ -377,13 +406,13 @@ app.get('/api/status', requireAuth, async (req: AuthRequest, res) => {
 import { getSettings, updateSettings } from './src/system/settings.js';
 import { getPendingPosts, approvePost, rejectPost, getHistory } from './src/autopost/api.js';
 
-app.get('/api/settings', requireAuth, async (req, res) => {
-  res.json(getSettings());
+app.get('/api/settings', requireAuth, async (req: AuthRequest, res) => {
+  res.json(getSettings(req.user?.tenantId));
 });
 
-app.post('/api/settings', requireAuth, async (req, res) => {
-  updateSettings(req.body);
-  res.json({ success: true, settings: getSettings() });
+app.post('/api/settings', requireAuth, async (req: AuthRequest, res) => {
+  updateSettings(req.body, req.user?.tenantId);
+  res.json({ success: true, settings: getSettings(req.user?.tenantId) });
 });
 
 // Autopost routes
