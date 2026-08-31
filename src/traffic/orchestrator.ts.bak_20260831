@@ -13,11 +13,11 @@ const connectedListeners = new Set<number>();
 export async function bootAllListeners() {
   logger.info({ type: 'system', message: 'Booting all farm listeners...' });
   
-  const res = await db.withTenant(process.env.DEFAULT_TENANT || 'tenant_1', (c: any) => c.query(`
+  const res = await db.query(`
     SELECT * FROM farm_accounts 
     WHERE status IN ('active', 'warmup') 
       AND (role = 'hybrid' OR role = 'hunter')
-  `));
+  `);
 
   for (const account of res.rows) {
     if (connectedListeners.has(account.id)) continue;

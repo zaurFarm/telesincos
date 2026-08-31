@@ -10,11 +10,11 @@ export async function runTraffic() {
   console.log('[Traffic Engine] Running distributed traffic search...');
 
   // Get all active hunters / hybrid accounts
-  const res = await db.withTenant(process.env.DEFAULT_TENANT || 'tenant_1', (c: any) => c.query(`
+  const res = await db.query(`
     SELECT * FROM farm_accounts 
     WHERE status IN ('active', 'warmup') 
       AND (role = 'hybrid' OR role = 'hunter')
-  `));
+  `);
   const accounts = res.rows;
   if (accounts.length === 0) {
       console.log('[Traffic Engine] No active accounts for traffic generation');
