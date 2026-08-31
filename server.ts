@@ -1684,8 +1684,8 @@ import { orchestrator } from './src/system/orchestrator.js';
 
 app.get('/api/control/state', requireAuth, async (req, res) => {
   try {
-    const tenantId = req.headers['x-tenant-id']?.toString() || 'tenant_1';
-    const role = req.headers['x-role']?.toString() || 'admin';
+    const tenantId = (req as any).user?.tenantId; if (!tenantId) return res.status(403).json({ error: 'forbidden' });
+    const role = (req as any).user?.id === 'admin' ? 'admin' : 'user';
     const state = await orchestrator.getState(tenantId, role);
     res.json(state);
   } catch(e: any) {
@@ -1696,8 +1696,8 @@ app.get('/api/control/state', requireAuth, async (req, res) => {
 
 app.post('/api/control/action', express.json(), requireAuth, async (req, res) => {
   try {
-    const tenantId = req.headers['x-tenant-id']?.toString() || 'tenant_1';
-    const role = req.headers['x-role']?.toString() || 'admin';
+    const tenantId = (req as any).user?.tenantId; if (!tenantId) return res.status(403).json({ error: 'forbidden' });
+    const role = (req as any).user?.id === 'admin' ? 'admin' : 'user';
     
     const { action, payload } = req.body;
     if (action === 'scale') {
@@ -1879,7 +1879,7 @@ app.post('/api/system/state', requireAuth, async (req, res) => {
 app.get('/api/billing', requireAuth, async (req, res) => {
   try {
     const { getBillingDash } = await import('./src/system/billing.js');
-    const tenantId = req.headers['x-tenant-id']?.toString() || 'tenant_1';
+    const tenantId = (req as any).user?.tenantId; if (!tenantId) return res.status(403).json({ error: 'forbidden' });
     const dash = await getBillingDash(tenantId);
     res.json(dash);
   } catch(e: any) {
