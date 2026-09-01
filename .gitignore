@@ -9,3 +9,4 @@ coverage/
 *.bak
 *.tar.gz
 *.bak_admin_security
+*.bak_*
