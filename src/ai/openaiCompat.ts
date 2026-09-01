@@ -24,7 +24,7 @@ const callerStats: Record<string, number> = {};
 function callerName(): string {
   const lines = String(new Error().stack || '').split('\n').slice(1);
   for (const l of lines) {
-    if (/openaiCompat|provider\.ts|provider\.js|chatWithFallback|generateContent|generateJSON|node_modules|node:internal/.test(l)) continue;
+    if (/callerName|openaiCompat|provider\.ts|provider\.js|chatWithFallback|generateContent|generateJSON|node_modules|node:internal/.test(l)) continue;
     const m = l.match(/at (?:async )?([\w.$<>]+)/); if (m && m[1] !== 'Object.<anonymous>') return m[1];
     const f = l.match(/([\w-]+\.(?:ts|cjs|js)):(\d+)/); if (f) return f[1] + ':' + f[2];
   }
