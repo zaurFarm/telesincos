@@ -124,13 +124,14 @@ export function mergeStyles(user: any, group: any) {
 }
 
 export function detectStage(messages: any[]) {
-  const last = messages[messages.length - 1]?.text?.toLowerCase() || '';
-
-  if (last.includes('цена') || last.includes('сколько')) return 'offer';
-  if (last.includes('дорого') || last.includes('подумаю')) return 'objection';
-  if (last.includes('ок') || last.includes('беру') || last.includes('куда платить')) return 'closing';
-  if (messages.length < 3) return 'greeting';
-
+  const last = String(messages[messages.length - 1]?.text || '').toLowerCase();
+  const has = (rx: RegExp) => rx.test(last);
+  if (has(/(^|[^а-яё])(пока|до свидания|до связи|всего доброго|всего хорошего|не надо|не пиши)([^а-яё]|$)/)) return 'closed';
+  if (has(/(^|[^а-яё])(беру|заберу|куда платить|оплачу|давай оформим|оформляй)([^а-яё]|$)/)) return 'closing';
+  if (has(/(^|[^а-яё])(дорого|подумаю|дороговато|не уверен)([^а-яё]|$)/)) return 'objection';
+  if (messages.length < 2) return 'greeting';
+  if (has(/(^|[^а-яё])(цена|сколько|стоимость|почём|почем|прайс)([^а-яё]|$)/)) return 'offer';
+  if (has(/^(ок|окей|ok|хорошо|ладно)[\s.!)]*$/)) return 'closing';
   return 'qualification';
 }
 

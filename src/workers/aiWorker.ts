@@ -27,6 +27,7 @@ import { idempotency } from '../system/idempotency.js';
 import { runWithContext, createContext } from '../system/context.js';
 
 import { loadControl } from '../system/loadControl.js';
+import { detectFarewell, farewellReply, ensureGreeting, greetedRecently } from '../ai/etiquette.js';
 import { metrics } from '../system/metrics.js';
 
 export const aiWorker = new Worker('ai', async (job) => {
@@ -108,6 +109,25 @@ export const aiWorker = new Worker('ai', async (job) => {
     // 1. PREPROCESS
     const pre = await preprocess(input);
     if (pre.drop) return;
+
+    // 1.1 ПРОЩАНИЕ: клиент завершает разговор — одна фраза, ИИ не вызываем
+    const farewell = detectFarewell(input.text);
+    if (farewell) {
+      await db.withTenant(ctx.tenantId, async (client) => {
+        await client.query(`INSERT INTO conversations (user_id, chat_id, role, message, tenant_id) VALUES ($1, $2, 'user', $3, $4) ON CONFLICT DO NOTHING`, [String(input.userId), String(input.chatId), input.text, ctx.tenantId]);
+      }).catch((e: any) => logger.error({ type: 'save_user_msg_error', error: e.message }));
+      await dispatchMessage({
+        chatId: input.chatId,
+        userId: input.userId,
+        text: farewellReply(farewell),
+        delay: 1500 + Math.floor(Math.random() * 2000),
+        meta: { strategy: farewell === 'hard' ? 'farewell' : 'soft_close' },
+        span
+      });
+      await updateConversationState(String(input.chatId), farewell === 'hard' ? 'closed' : 'closing', 'farewell');
+      logger.info({ type: 'ai_decision', action: 'farewell', kind: farewell, userId: input.userId, ...span });
+      return;
+    }
     // Save user message to conversations
     await db.withTenant(ctx.tenantId, async (client) => {
       await client.query(`INSERT INTO conversations (user_id, chat_id, role, message, tenant_id) VALUES ($1, $2, 'user', $3, $4) ON CONFLICT DO NOTHING`, [String(input.userId), String(input.chatId), input.text, ctx.tenantId]);
@@ -182,6 +202,15 @@ export const aiWorker = new Worker('ai', async (job) => {
     // 6. POSTPROCESS
     const final = await postprocess(reply, state, decision);
 
+
+      // 6.1 ПРИВЕТСТВИЕ: один раз на диалог (или после паузы > 12 ч)
+      if (!(await greetedRecently(String(input.userId), String(input.chatId)))) {
+        if (final.isSplit && final.messages && final.messages.length > 0) {
+          final.messages[0].text = ensureGreeting(final.messages[0].text);
+        } else {
+          final.text = ensureGreeting(final.text);
+        }
+      }
     const { isMessageRisky } = await import('../system/globalBrain.js');
     if (await isMessageRisky(final.text)) {
         logger.warn({ type: 'system', message: `Generated risky message blocked`, text: final.text, ...span });
