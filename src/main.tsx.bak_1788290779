@@ -30,11 +30,11 @@ Object.defineProperty(window, 'fetch', {
         ];
         const isIgnored = ignoredPaths.some(p => url.includes(p));
         const now = Date.now();
-        if ((now - authErrorTriggeredAt) > 3000) {
+        if (savedToken && !isIgnored && (now - authErrorTriggeredAt) > 3000) {
           window.dispatchEvent(new CustomEvent('auth-error'));
           authErrorTriggeredAt = now;
         }
-      }, 500);
+      }, 2000);
     }
     return res;
   },
