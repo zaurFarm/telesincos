@@ -129,7 +129,7 @@ import jwt from 'jsonwebtoken';
 import { runWithContext, createContext } from './src/system/context.js';
 import { contextMiddleware, AuthRequest } from './src/runtime/observability/ContextMiddleware.js';
 
-export async function requireAuth(req: AuthRequest, res: express.Response, next: express.NextFunction) {
+export function requireAuth(req: AuthRequest, res: express.Response, next: express.NextFunction) {
   const expectedToken = process.env.ADMIN_TOKEN;
 
   // Enforce token existence. An empty, missing, or fallback ADMIN_TOKEN can never grant admin access.
@@ -159,12 +159,7 @@ export async function requireAuth(req: AuthRequest, res: express.Response, next:
       if (!process.env.JWT_SECRET) {
           throw new Error('CRITICAL: JWT_SECRET must be configured.');
       }
-      const decoded: any = jwt.verify(token, process.env.JWT_SECRET);
-      if (decoded?.id && decoded.id !== 'admin') {
-        const vr = await pool.query('SELECT token_version FROM saas_users WHERE id = $1', [decoded.id]);
-        if (vr.rows.length === 0) return res.status(401).json({ error: 'unauthorized' });
-        if ((vr.rows[0].token_version || 0) !== (decoded.tv || 0)) return res.status(401).json({ error: 'token_revoked' });
-      }
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
       req.user = decoded;
       next();
   } catch (err) {
