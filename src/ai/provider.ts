@@ -1,6 +1,7 @@
 import { GoogleGenAI } from '@google/genai';
 import { getSettings } from '../system/settings.js';
 import OpenAI from 'openai';
+import { chatWithFallback } from './openaiCompat.js';
 
 interface GenerateOptions {
   model?: string;
@@ -27,25 +28,9 @@ export async function generateContent(prompt: string, opts?: GenerateOptions): P
 
     try {
       if (provider === 'openai') {
-        const openai = new OpenAI({ apiKey: settings.openAiKey || process.env.OPENAI_API_KEY });
-        const model = opts?.model || settings.openAiModel || 'gpt-4o-mini';
-        const messages: any[] = [];
-        
-        if (opts?.systemPrompt) {
-          messages.push({ role: 'system', content: opts.systemPrompt });
-        }
-        messages.push({ role: 'user', content: prompt });
-
-        const response = await openai.chat.completions.create({
-          model,
-          messages,
-          temperature: opts?.temperature ?? 0.7,
-        });
-
-        // 2. Confirm usage on success
-        if (usageId) await billing.confirm(tenantId, usageId);
-        
-        return response.choices[0]?.message?.content || '';
+          const text = await chatWithFallback({ settings, prompt, systemPrompt: opts?.systemPrompt, model: opts?.model, temperature: opts?.temperature ?? 0.7 });
+          if (usageId) await billing.confirm(tenantId, usageId);
+          return text;
 
       } else if (provider === 'ollama') {
         const endpoint = settings.ollamaEndpoint || process.env.OLLAMA_URL || 'http://localhost:11434';
@@ -151,24 +136,9 @@ export async function generateJSON(prompt: string, opts?: GenerateOptions): Prom
 
     try {
         if (provider === 'openai') {
-          const openai = new OpenAI({ apiKey: settings.openAiKey || process.env.OPENAI_API_KEY });
-          const model = opts?.model || settings.openAiModel || 'gpt-4o-mini';
-          const messages: any[] = [];
-          
-          if (opts?.systemPrompt) {
-            messages.push({ role: 'system', content: opts.systemPrompt });
-          }
-          messages.push({ role: 'user', content: prompt });
-    
-          const response = await openai.chat.completions.create({
-            model,
-            messages,
-            response_format: { type: "json_object" },
-            temperature: opts?.temperature ?? 0.7,
-          });
-    
+          const text = await chatWithFallback({ settings, prompt, systemPrompt: opts?.systemPrompt, model: opts?.model, temperature: opts?.temperature ?? 0.7, json: true });
           if (usageId) await billing.confirm(tenantId, usageId);
-          return JSON.parse(response.choices[0]?.message?.content || '{}');
+          return JSON.parse(text || '{}');
     
         } else if (provider === 'ollama') {
             const endpoint = settings.ollamaEndpoint || process.env.OLLAMA_URL || 'http://localhost:11434';
