@@ -208,7 +208,7 @@ app.use('/api/', apiLimiter);
 // ============================================
 // 🔐 AUTH — Регистрация и вход пользователей
 // ============================================
-app.post('/api/auth/register', async (req, res) => {
+app.post('/api/auth/register', strictLimiter, async (req, res) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) return res.status(400).json({ error: 'Email и пароль обязательны' });
