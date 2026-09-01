@@ -469,8 +469,8 @@ export function AppDashboard() {
     const handleAuthError = () => {
        setAuthError(true);
     };
-    window.addEventListener('auth-error', handleAuthError);
-    return () => window.removeEventListener('auth-error', handleAuthError);
+    window.addEventListener('auth-error-legacy-disabled', handleAuthError);
+    return () => window.removeEventListener('auth-error-legacy-disabled', handleAuthError);
   }, []);
 
   const [logIntel, setLogIntel] = useState<any>(null);

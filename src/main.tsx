@@ -12,29 +12,27 @@ Object.defineProperty(window, 'fetch', {
   value: async (input: RequestInfo | URL, init: RequestInit = {}) => {
     const token = sessionStorage.getItem('app_token');
     const headers = new Headers(init.headers || {});
-    if (token && !headers.has('Authorization')) {
-      headers.set('Authorization', `Bearer ${token}`);
-    }
+    const existing = (headers.get('Authorization') || '').trim();
+    const emptyBearer = existing === '' || existing === 'Bearer' || existing === 'Bearer null' || existing === 'Bearer undefined';
+    if (token && emptyBearer) headers.set('Authorization', `Bearer ${token}`);
     const res = await originalFetch(input, { ...init, headers });
-    if (res.status === 403 || res.status === 401) {
-      setTimeout(() => {
-        const savedToken = sessionStorage.getItem('app_token');
-        const url = typeof input === 'string' ? input : input instanceof URL ? input.href : (input as Request).url;
-        const ignoredPaths = [
-          '/api/billing', '/api/insights', '/api/dashboard',
-          '/api/system', '/api/admin', '/api/autopost', '/api/control',
-          '/api/governance', '/api/analytics', '/api/leads', '/api/revenue',
-          '/api/experiments', '/api/followups', '/api/usage', '/api/userbot',
-          '/api/accounts', '/api/settings', '/api/actions', '/api/competitors',
-          '/api/telemetry', '/api/report', '/api/payments',
-        ];
-        const isIgnored = ignoredPaths.some(p => url.includes(p));
+
+    // Выход только по настоящему 401 от нашего API (плохой/отозванный токен), не по 403 и не по чужим доменам
+    if (res.status === 401 && token) {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : (input as Request).url;
+      const isOurApi = url.startsWith('/api/') || url.startsWith(`${location.origin}/api/`);
+      const isAuthRoute = /\/api\/auth\/(login|register|forgot|reset)/.test(url);
+      if (isOurApi && !isAuthRoute) {
+        let code = '';
+        try { code = String((await res.clone().json())?.error || ''); } catch { /* не JSON */ }
+        const fatal = code === 'unauthorized' || code === 'token_revoked';
         const now = Date.now();
-        if ((now - authErrorTriggeredAt) > 3000) {
-          window.dispatchEvent(new CustomEvent('session-expired'));
+        if (fatal && (now - authErrorTriggeredAt) > 3000) {
           authErrorTriggeredAt = now;
+          console.warn('[auth] session expired on', url, code);
+          window.dispatchEvent(new CustomEvent('session-expired'));
         }
-      }, 500);
+      }
     }
     return res;
   },

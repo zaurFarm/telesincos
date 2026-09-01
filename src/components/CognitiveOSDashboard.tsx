@@ -90,7 +90,7 @@ export function CognitiveOSDashboard() {
   const [floodWait, setFloodWait] = useState<number>(0);
 
   useEffect(() => {
-    const token = localStorage.getItem('app_token');
+    const token = sessionStorage.getItem('app_token');
     const evtSource = new EventSource('/api/telemetry/stream?token=' + encodeURIComponent(token || ''));
 
     evtSource.onmessage = (event) => {
