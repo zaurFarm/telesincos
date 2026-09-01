@@ -4104,7 +4104,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/" element={<Landing />} />
-      <Route path="/app" element={<AuthGate><AppDashboard /></AuthGate>} />
+      <Route path="/app" element={<AppDashboard />} />
     </Routes>
   );
 }

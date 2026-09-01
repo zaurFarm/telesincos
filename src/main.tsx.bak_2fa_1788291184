@@ -10,7 +10,7 @@ let authErrorTriggeredAt = 0;
 const originalFetch = window.fetch;
 Object.defineProperty(window, 'fetch', {
   value: async (input: RequestInfo | URL, init: RequestInit = {}) => {
-    const token = sessionStorage.getItem('app_token');
+    const token = localStorage.getItem('ADMIN_TOKEN') || (import.meta as any).env?.VITE_ADMIN_TOKEN;
     const headers = new Headers(init.headers || {});
     if (token && !headers.has('Authorization')) {
       headers.set('Authorization', `Bearer ${token}`);
@@ -18,7 +18,7 @@ Object.defineProperty(window, 'fetch', {
     const res = await originalFetch(input, { ...init, headers });
     if (res.status === 403 || res.status === 401) {
       setTimeout(() => {
-        const savedToken = sessionStorage.getItem('app_token');
+        const savedToken = localStorage.getItem('ADMIN_TOKEN');
         const url = typeof input === 'string' ? input : input instanceof URL ? input.href : (input as Request).url;
         const ignoredPaths = [
           '/api/billing', '/api/insights', '/api/dashboard',
@@ -31,7 +31,7 @@ Object.defineProperty(window, 'fetch', {
         const isIgnored = ignoredPaths.some(p => url.includes(p));
         const now = Date.now();
         if ((now - authErrorTriggeredAt) > 3000) {
-          window.dispatchEvent(new CustomEvent('session-expired'));
+          window.dispatchEvent(new CustomEvent('auth-error'));
           authErrorTriggeredAt = now;
         }
       }, 500);
