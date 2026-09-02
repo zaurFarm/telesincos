@@ -1536,7 +1536,7 @@ export function AppDashboard() {
                 <Settings className="w-4 h-4" /> Настройки
               </button>
               <button
-                onClick={() => { sessionStorage.removeItem('app_token'); localStorage.removeItem('ADMIN_TOKEN'); window.location.href = '/app'; }}
+                onClick={() => { sessionStorage.removeItem('app_token'); localStorage.removeItem('app_token'); localStorage.removeItem('ADMIN_TOKEN'); window.location.href = '/app'; }}
                 className="flex-1 py-3 rounded-2xl text-sm font-bold text-red-400 transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2"
                 style={{background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)'}}
               >
