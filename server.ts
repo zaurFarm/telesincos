@@ -179,6 +179,7 @@ import { RedisStore } from 'rate-limit-redis';
 import { connection, hasRedisUrl } from './src/queue/redis.js';
 
 const apiLimiter = rateLimit({
+  validate: { xForwardedForHeader: false, default: false },
   windowMs: 15 * 60 * 1000, 
   max: 500, 
   message: 'Too many requests from this IP, please try again after 15 minutes',
@@ -192,6 +193,7 @@ const apiLimiter = rateLimit({
 });
 
 const strictLimiter = rateLimit({
+  validate: { xForwardedForHeader: false, default: false },
   windowMs: 60 * 1000, 
   max: 20, 
   message: 'Too many actions, please try again after 1 minute',
