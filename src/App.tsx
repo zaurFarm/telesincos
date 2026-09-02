@@ -425,7 +425,7 @@ export function AppDashboard() {
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [pendingPosts, setPendingPosts] = useState<any[]>([]);
   const [adminToken, setAdminToken] = useState(localStorage.getItem('ADMIN_TOKEN') || (import.meta as any).env?.VITE_ADMIN_TOKEN || '');
-  const [authError, setAuthError] = useState(!(localStorage.getItem('ADMIN_TOKEN') || ''));
+  const [authError, setAuthError] = useState(false);
   const [loginInput, setLoginInput] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginErrorMessage, setLoginErrorMessage] = useState('');
