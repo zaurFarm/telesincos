@@ -266,7 +266,7 @@ app.post('/api/auth/login', strictLimiter, async (req, res) => {
     if (user.totp_enabled) {
       const code = (req.body || {}).code;
       if (!code) return res.status(401).json({ error: 'totp_required' });
-      const { authenticator } = await import('otplib');
+      const _otp: any = await import('otplib'); const authenticator = _otp.authenticator || _otp.default?.authenticator;
       if (!authenticator.check(String(code), user.totp_secret || '')) {
         return res.status(401).json({ error: 'Неверный код подтверждения' });
       }
@@ -304,8 +304,8 @@ app.get('/api/auth/2fa/status', requireAuth, async (req: any, res: any) => {
 });
 
 app.post('/api/auth/2fa/setup', requireAuth, async (req: any, res: any) => {
-  const { authenticator } = await import('otplib');
-  const QRCode = (await import('qrcode')).default;
+  const _otp: any = await import('otplib'); const authenticator = _otp.authenticator || _otp.default?.authenticator;
+  const _qr: any = await import('qrcode'); const QRCode = _qr.default || _qr;
   const secret = authenticator.generateSecret();
   await pool.query('UPDATE saas_users SET totp_secret = $1 WHERE id = $2', [secret, req.user?.id]);
   const otpauth = authenticator.keyuri(req.user?.email || 'user', 'Telesincos', secret);
@@ -313,7 +313,7 @@ app.post('/api/auth/2fa/setup', requireAuth, async (req: any, res: any) => {
 });
 
 app.post('/api/auth/2fa/enable', requireAuth, async (req: any, res: any) => {
-  const { authenticator } = await import('otplib');
+  const _otp: any = await import('otplib'); const authenticator = _otp.authenticator || _otp.default?.authenticator;
   const r = await pool.query('SELECT totp_secret FROM saas_users WHERE id = $1', [req.user?.id]);
   const secret = r.rows[0]?.totp_secret;
   if (!secret || !authenticator.check(String((req.body || {}).code || ''), secret)) {
