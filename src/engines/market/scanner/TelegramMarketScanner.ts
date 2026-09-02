@@ -1,3 +1,4 @@
+import { ollamaGenerate } from '../../../ai/ollama.js';
 import { db } from '../../../db.js';
 import { generateJSON } from '../../../ai/provider.js';
 
@@ -58,7 +59,17 @@ export class TelegramMarketScanner {
       "Otvet TOLKO validnym JSON-obektom formata {\"items\": [{\"product\": \"nazvanie\", \"price\": chislo, \"quantity\": chislo ili null}]}. Esli tovarov net - {\"items\": []}.\n\nText:\n" +
       text.slice(0, 3000) + "\n\nJSON:";
     try {
-      const parsed = await generateJSON(prompt);
+      // Фоновый разбор чужих прайсов не должен съедать квоту groq,
+      // которая нужна для живых ответов клиентам. По умолчанию — локальная модель.
+      const useLocal = (process.env.SCANNER_PROVIDER || 'ollama').toLowerCase() === 'ollama';
+      let parsed: any;
+      if (useLocal) {
+        const raw = await ollamaGenerate(prompt);
+        const m = String(raw || '').match(/\{[\s\S]*\}/);
+        parsed = m ? JSON.parse(m[0]) : { items: [] };
+      } else {
+        parsed = await generateJSON(prompt);
+      }
       const result = Array.isArray(parsed) ? parsed : (parsed?.items || []);
       if (!Array.isArray(result)) return [];
       return result
@@ -70,12 +81,16 @@ export class TelegramMarketScanner {
     }
   }
 
-  static async scanChannelsAI(limit = 100): Promise<MarketEntry[]> {
+  static async scanChannelsAI(limit = Number(process.env.SCANNER_BATCH || 25)): Promise<MarketEntry[]> {
     const entries: MarketEntry[] = [];
     let rows: any[] = [];
     try {
       const res = await db.query(
-        "SELECT account_id AS seller, text, created_at FROM account_messages WHERE text IS NOT NULL AND length(text) > 10 ORDER BY created_at DESC LIMIT $1",
+        `SELECT m.account_id AS seller, m.text, m.created_at
+           FROM account_messages m
+          WHERE m.text IS NOT NULL AND length(m.text) > 10
+            AND m.created_at > now() - interval '24 hours'
+          ORDER BY m.created_at DESC LIMIT $1`,
         [limit]
       );
       rows = res.rows || [];
@@ -84,19 +99,8 @@ export class TelegramMarketScanner {
       return entries;
     }
 
-    // Экономия ИИ: сначала дешёвый разбор регуляркой, ИИ — только для нераспознанного, с потолком за прогон
-    let aiBudget = Number(process.env.MARKET_AI_BUDGET || 8);
     for (const row of rows) {
-      let items: { product: string; price: number; quantity?: number }[] = [];
-      const cheap = this.parseMessage(row.text);
-      if (cheap) {
-        items = [cheap];
-      } else if (aiBudget > 0) {
-        aiBudget--;
-        items = await this.parseMessageAI(row.text);
-      } else {
-        continue; // бюджет ИИ на этот прогон исчерпан — пропускаем, соберём в следующий раз
-      }
+      const items = await this.parseMessageAI(row.text);
       for (const item of items) {
         const entry: MarketEntry = {
           seller: row.seller || "unknown",
