@@ -1,6 +1,7 @@
 import { generateContent } from './provider.js';
 import { ClientType } from './classifier.js';
 import { advanceCharacterDrift } from './personalityDrift.js';
+import { buildPersonaPrompt, CORE_PERSONA, NEVER } from './persona.js';
 import { db } from '../db.js';
 import dotenv from 'dotenv';
 dotenv.config();
@@ -70,12 +71,18 @@ export async function generateSalesReply(
   clientType: ClientType = 'curious'
 ): Promise<string> {
   const prompt = `
-Ты эксперт по продажам вейпов в Telegram.
-Задача: ответить человеку так, чтобы начать диалог.
-Тип клиента: ${clientType}
-Товар: ${product || 'не указан'}
-Сообщение клиента:
+${CORE_PERSONA}
+
+${NEVER}
+
+Сейчас: человек написал впервые. Зацепись за то, что он сам сказал, ответь по сути и спроси одну вещь. Без презентаций и без "здравствуйте".
+С кем говоришь: ${clientType}
+${product ? `Речь про: ${product}` : ''}
+
+Сообщение человека:
 ${wrapUntrusted(text)}
+
+Напиши ответ. Одно короткое живое сообщение, только текст.
 `;
   return await generateContent(prompt);
 }
@@ -136,8 +143,8 @@ ${groupExamples.join('\n')}
   let stageStr = '';
   if (conversationState) {
     const st = conversationState.stage || 'greeting';
-    stageStr = `\nТекущая стадия диалога: ${st}. `;
-    if (st === 'greeting' || st === 'closed') stageStr += "Это начало разговора (или клиент вернулся после паузы): поздоровайся одним словом в начале, дальше — по делу. Если клиент спросил про товар/цену — ответь по существу или скажи, что уточнишь, а не уходи от ответа.";
+    stageStr = '';
+    if (st === 'greeting') stageStr += "Поприветствуй коротко и по-человечески, без психологических вопросов вроде 'что тебя тревожит'. Если клиент спросил про товар/цену — ответь по существу или скажи, что уточнишь, а не уходи от ответа.";
     else if (st === 'qualification') stageStr += "Задай 1-2 уточняющих вопроса.";
     else if (st === 'offer') stageStr += "Дай конкретное предложение.";
     else if (st === 'objection') stageStr += "Спокойно обработай возражение.";
@@ -147,44 +154,28 @@ ${groupExamples.join('\n')}
   let toneStr = '';
   if (behavior) {
     if (behavior.aggression_level > 0.6) {
-      toneStr = "Пиши уверенно, немного дави. ";
+      toneStr = "Держись увереннее, но без давления.";
     } else if (behavior.persistence_level > 0.6) {
-      toneStr = "Старайся аккуратно дожимать клиента. ";
+      toneStr = "Мягко напомни о себе, если человек подвис.";
     }
   }
 
   const catalogStr = await getCatalogString();
   const competitorStr = await getCompetitorPricesString();
 
-  let prompt = `
-ЖЁСТКОЕ ПРАВИЛО #1 (самое важное, нарушать ЗАПРЕЩЕНО): ты продавец товара, а НЕ психолог и НЕ терапевт. ЗАПРЕЩЕНО писать фразы "что тебя тревожит", "давай поговорим об этом", "расскажи что на душе", "не переживай", "что именно смущает" и любые их вариации — это абсолютный запрет, без исключений.
-ЖЁСТКОЕ ПРАВИЛО #2: если клиент спросил про товар, цену, наличие — отвечай конкретно по сути вопроса. Если точных данных нет — скажи прямо "сейчас уточню" или похожее, НЕ уходи в общие фразы.
+  let prompt = buildPersonaPrompt({
+    vibe: conversationState?.stage,
+    clientType: relationType,
+    strategy,
+    style: styleStr,
+    memories: memoryStr,
+    groupExamples: groupStr,
+    catalog: catalogStr,
+    competitors: competitorStr,
+    history: contextStr,
+  });
 
-Ты общаешься как живой человек (продавец, Telegram стиль).
-
-Тип клиента: ${relationType}
-Стратегия: ${strategy}
-${stageStr}
-${toneStr}
-
-Правила:
-- НЕ ПОВТОРЯЙ предыдущие формулировки
-- здоровайся только в самом первом сообщении диалога, в остальных — никогда
-- если клиент получил всё, что спрашивал, и вопросов не осталось — заверши одной короткой фразой (например "если что — пишите"), без новых вопросов
-- если клиент прощается — попрощайся одной фразой и ничего не предлагай
-- если товара нет в КАТАЛОГЕ — не называй цену, скажи что уточнишь наличие и цену
-- не будь официальным
-- без длинных текстов
-- пиши как в телеге (с маленькой буквы)
-${styleStr}
-${groupStr}
-${memoryStr}
-${catalogStr}${competitorStr}
-
-История (ВНИМАНИЕ: если в истории есть твои прошлые сообщения с фразами вроде "что тебя тревожит" — это ОШИБКА старой версии, НЕ повторяй такой стиль, он запрещён правилом #1):
-${contextStr}
-
-Сгенерируй новый ответ (помни про ЖЁСТКОЕ ПРАВИЛО #1 и #2 выше):`;
+  if (toneStr) prompt += `\n${toneStr}`;
 
   prompt = await advanceCharacterDrift(prompt);
 
@@ -192,6 +183,6 @@ ${contextStr}
     const res = await generateContent(prompt);
     return res;
   } catch (e) {
-    return "Ага, поняла";
+    return "секунду, уточню и напишу";
   }
 }
