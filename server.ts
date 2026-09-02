@@ -266,10 +266,10 @@ app.post('/api/auth/login', strictLimiter, async (req, res) => {
     if (user.totp_enabled) {
       const code = (req.body || {}).code;
       if (!code) return res.status(401).json({ error: 'totp_required' });
-      const _otp: any = await import('otplib'); const authenticator = _otp.authenticator || _otp.default?.authenticator;
-      if (!authenticator.check(String(code), user.totp_secret || '')) {
-        return res.status(401).json({ error: 'Неверный код подтверждения' });
-      }
+      const otp: any = require('otplib');
+      let good = false;
+      try { good = !!user.totp_secret && await otp.verify({ secret: user.totp_secret, token: String(code) }); } catch { good = false; }
+      if (!good) return res.status(401).json({ error: 'Неверный код подтверждения' });
     }
     
     const token = jwt.sign(
@@ -305,13 +305,11 @@ app.get('/api/auth/2fa/status', requireAuth, async (req: any, res: any) => {
 
 app.post('/api/auth/2fa/setup', requireAuth, async (req: any, res: any) => {
   try {
-    const _otp: any = require('otplib');
-    const authenticator = _otp.authenticator || _otp.default?.authenticator;
+    const otp: any = require('otplib');
     const QRCode: any = require('qrcode');
-    if (!authenticator) return res.status(500).json({ error: 'otplib_not_loaded' });
-    const secret = authenticator.generateSecret();
+    const secret = await otp.generateSecret();
     await pool.query('UPDATE saas_users SET totp_secret = $1 WHERE id = $2', [secret, req.user?.id]);
-    const otpauth = authenticator.keyuri(req.user?.email || 'user', 'Telesincos', secret);
+    const otpauth = await otp.generateURI({ secret, label: req.user?.email || 'user', issuer: 'Telesincos' });
     res.json({ qr: await QRCode.toDataURL(otpauth), secret });
   } catch (e: any) {
     console.error('[2fa/setup]', e?.message);
@@ -320,14 +318,12 @@ app.post('/api/auth/2fa/setup', requireAuth, async (req: any, res: any) => {
 });
 
 app.post('/api/auth/2fa/enable', requireAuth, async (req: any, res: any) => {
-  const _otp: any = require('otplib');
-  const authenticator = _otp.authenticator || _otp.default?.authenticator;
-  if (!authenticator) return res.status(500).json({ error: 'otplib_not_loaded' });
+  const otp: any = require('otplib');
   const r = await pool.query('SELECT totp_secret FROM saas_users WHERE id = $1', [req.user?.id]);
   const secret = r.rows[0]?.totp_secret;
-  if (!secret || !authenticator.check(String((req.body || {}).code || ''), secret)) {
-    return res.status(400).json({ error: 'Неверный код' });
-  }
+  let okCode = false;
+  try { okCode = !!secret && await otp.verify({ secret, token: String((req.body || {}).code || '') }); } catch { okCode = false; }
+  if (!okCode) return res.status(400).json({ error: 'Неверный код' });
   await pool.query('UPDATE saas_users SET totp_enabled = true WHERE id = $1', [req.user?.id]);
   res.json({ ok: true });
 });
