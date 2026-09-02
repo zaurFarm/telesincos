@@ -218,7 +218,7 @@ app.post('/api/auth/register', strictLimiter, async (req, res) => {
     const existing = await pool.query('SELECT id FROM saas_users WHERE email = $1', [email.toLowerCase()]);
     if (existing.rows.length > 0) return res.status(409).json({ error: 'Пользователь с таким email уже существует' });
     
-    const hash = await bcrypt.default.hash(password, 12);
+    const hash = await bcrypt.default.hash(password, 10);
     const userRes = await pool.query(
       'INSERT INTO saas_users (email, password, plan) VALUES ($1, $2, $3) RETURNING id, email, plan, created_at',
       [email.toLowerCase(), hash, 'free']
