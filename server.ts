@@ -304,16 +304,25 @@ app.get('/api/auth/2fa/status', requireAuth, async (req: any, res: any) => {
 });
 
 app.post('/api/auth/2fa/setup', requireAuth, async (req: any, res: any) => {
-  const _otp: any = await import('otplib'); const authenticator = _otp.authenticator || _otp.default?.authenticator;
-  const _qr: any = await import('qrcode'); const QRCode = _qr.default || _qr;
-  const secret = authenticator.generateSecret();
-  await pool.query('UPDATE saas_users SET totp_secret = $1 WHERE id = $2', [secret, req.user?.id]);
-  const otpauth = authenticator.keyuri(req.user?.email || 'user', 'Telesincos', secret);
-  res.json({ qr: await QRCode.toDataURL(otpauth), secret });
+  try {
+    const _otp: any = require('otplib');
+    const authenticator = _otp.authenticator || _otp.default?.authenticator;
+    const QRCode: any = require('qrcode');
+    if (!authenticator) return res.status(500).json({ error: 'otplib_not_loaded' });
+    const secret = authenticator.generateSecret();
+    await pool.query('UPDATE saas_users SET totp_secret = $1 WHERE id = $2', [secret, req.user?.id]);
+    const otpauth = authenticator.keyuri(req.user?.email || 'user', 'Telesincos', secret);
+    res.json({ qr: await QRCode.toDataURL(otpauth), secret });
+  } catch (e: any) {
+    console.error('[2fa/setup]', e?.message);
+    res.status(500).json({ error: 'setup_failed', detail: String(e?.message || e).slice(0, 200) });
+  }
 });
 
 app.post('/api/auth/2fa/enable', requireAuth, async (req: any, res: any) => {
-  const _otp: any = await import('otplib'); const authenticator = _otp.authenticator || _otp.default?.authenticator;
+  const _otp: any = require('otplib');
+  const authenticator = _otp.authenticator || _otp.default?.authenticator;
+  if (!authenticator) return res.status(500).json({ error: 'otplib_not_loaded' });
   const r = await pool.query('SELECT totp_secret FROM saas_users WHERE id = $1', [req.user?.id]);
   const secret = r.rows[0]?.totp_secret;
   if (!secret || !authenticator.check(String((req.body || {}).code || ''), secret)) {
