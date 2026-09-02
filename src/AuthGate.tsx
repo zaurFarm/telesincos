@@ -109,7 +109,12 @@ export default function AuthGate({ children }: { children: any }) {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    const onExpired = () => { sessionStorage.removeItem('app_token'); setToken(''); setErr(ERRORS.unauthorized); };
+    const onExpired = () => {
+      const had = !!sessionStorage.getItem('app_token');
+      sessionStorage.removeItem('app_token');
+      setToken('');
+      if (had) setErr(ERRORS.unauthorized);
+    };
     window.addEventListener('session-expired', onExpired);
     return () => window.removeEventListener('session-expired', onExpired);
   }, []);
@@ -185,7 +190,7 @@ export default function AuthGate({ children }: { children: any }) {
           <Logo />
         </div>
 
-        <div className="bg-[#0d1220]/92 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-[0_24px_70px_-20px_rgba(0,0,0,.9)]">
+        <form onSubmit={e => { e.preventDefault(); if (!busy) submit(); }} className="bg-[#0d1220]/92 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-[0_24px_70px_-20px_rgba(0,0,0,.9)]">
           {mode !== 'forgot' && (
             <div className="grid grid-cols-2 gap-1 p-1 mb-5 rounded-lg bg-black/40">
               {(['login', 'register'] as Mode[]).map(m => (
@@ -259,7 +264,7 @@ export default function AuthGate({ children }: { children: any }) {
           {err && <div className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 mb-3">{err}</div>}
           {ok && <div className="text-sm text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3 py-2 mb-3">{ok}</div>}
 
-          <button type="button" onClick={submit} disabled={busy}
+          <button type="submit" disabled={busy}
             className="w-full py-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-wait font-semibold transition">
             {busy ? 'Проверяем…' : mode === 'login' ? 'Войти' : mode === 'register' ? 'Создать аккаунт' : 'Отправить ссылку'}
           </button>
@@ -267,7 +272,7 @@ export default function AuthGate({ children }: { children: any }) {
           {mode === 'forgot' && (
             <button type="button" onClick={() => switchMode('login')} className="w-full mt-3 text-sm text-gray-400 hover:text-white">← Вернуться ко входу</button>
           )}
-        </div>
+        </form>
 
         <p className="text-center text-xs text-gray-600 mt-6">
           Входя, вы соглашаетесь с <a href="/#terms" className="underline hover:text-gray-400">условиями</a> и <a href="/#privacy" className="underline hover:text-gray-400">политикой конфиденциальности</a>
