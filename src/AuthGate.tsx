@@ -17,6 +17,83 @@ const ERRORS: Record<string, string> = {
 };
 const human = (e: any, fallback: string) => (typeof e === 'string' && ERRORS[e]) || (typeof e === 'string' && e.length < 80 ? e : fallback);
 
+const BG_CSS = `
+@keyframes ts-drift-a { 0%,100% { transform: translate3d(-12%, -8%, 0) scale(1); } 50% { transform: translate3d(8%, 6%, 0) scale(1.15); } }
+@keyframes ts-drift-b { 0%,100% { transform: translate3d(10%, 12%, 0) scale(1.1); } 50% { transform: translate3d(-6%, -10%, 0) scale(0.95); } }
+@keyframes ts-pulse { 0%,100% { opacity: .55; } 50% { opacity: .9; } }
+.ts-blob { position: absolute; border-radius: 9999px; filter: blur(100px); will-change: transform; }
+.ts-blob-a { width: 46rem; height: 46rem; top: -14rem; left: -10rem; background: radial-gradient(circle, rgba(37,99,235,.38), transparent 68%); animation: ts-drift-a 34s ease-in-out infinite; }
+.ts-blob-b { width: 40rem; height: 40rem; bottom: -16rem; right: -8rem; background: radial-gradient(circle, rgba(14,165,233,.26), transparent 70%); animation: ts-drift-b 42s ease-in-out infinite; }
+@keyframes ts-spin { to { transform: rotate(360deg); } }
+@keyframes ts-spin-rev { to { transform: rotate(-360deg); } }
+@keyframes ts-core { 0%,100% { opacity: .7; transform: scale(1); } 50% { opacity: 1; transform: scale(1.12); } }
+@keyframes ts-halo { 0% { opacity: .5; transform: scale(.9); } 70% { opacity: 0; transform: scale(1.9); } 100% { opacity: 0; transform: scale(1.9); } }
+.ts-orbit { transform-box: fill-box; transform-origin: center; }
+.ts-orbit-a { animation: ts-spin 18s linear infinite; }
+.ts-orbit-b { animation: ts-spin-rev 26s linear infinite; }
+.ts-core { transform-box: fill-box; transform-origin: center; animation: ts-core 4.5s ease-in-out infinite; }
+.ts-halo { transform-box: fill-box; transform-origin: center; animation: ts-halo 4.5s ease-out infinite; }
+.group:hover .ts-orbit-a { animation-duration: 9s; }
+.group:hover .ts-orbit-b { animation-duration: 13s; }
+.ts-orbit, .ts-core, .ts-halo { transition: none; }
+@media (prefers-reduced-motion: reduce) { .ts-blob, .ts-orbit, .ts-core, .ts-halo { animation: none; } }
+`;
+
+function Backdrop() {
+  return (
+    <div aria-hidden className="absolute inset-0 overflow-hidden pointer-events-none" style={{ backgroundColor: '#060910' }}>
+      <style>{BG_CSS}</style>
+      <div className="ts-blob ts-blob-a" />
+      <div className="ts-blob ts-blob-b" />
+      <svg className="absolute inset-0 w-full h-full" style={{ opacity: 0.14 }} xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <pattern id="ts-grid" width="56" height="56" patternUnits="userSpaceOnUse">
+            <path d="M56 0H0V56" fill="none" stroke="rgba(148,197,255,.28)" strokeWidth="1" />
+          </pattern>
+          <radialGradient id="ts-fade" cx="50%" cy="45%" r="62%">
+            <stop offset="0%" stopColor="white" stopOpacity="1" />
+            <stop offset="100%" stopColor="white" stopOpacity="0" />
+          </radialGradient>
+          <mask id="ts-mask">
+            <rect width="100%" height="100%" fill="url(#ts-fade)" />
+          </mask>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#ts-grid)" mask="url(#ts-mask)" />
+      </svg>
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#060910]/90" />
+    </div>
+  );
+}
+
+function Logo() {
+  return (
+    <a href="/" aria-label="На главную"
+      className="group inline-flex items-center gap-3 rounded-xl px-2 py-1 outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
+      <svg width="38" height="38" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="ts-mark" x1="6" y1="4" x2="42" y2="44" gradientUnits="userSpaceOnUse">
+            <stop stopColor="#60A5FA" />
+            <stop offset="1" stopColor="#22D3EE" />
+          </linearGradient>
+        </defs>
+        <g className="ts-orbit ts-orbit-a">
+          <ellipse cx="24" cy="24" rx="19" ry="9" transform="rotate(-32 24 24)" stroke="url(#ts-mark)" strokeWidth="2" opacity=".75" />
+          <circle cx="40" cy="14.5" r="2.4" fill="#22D3EE" />
+        </g>
+        <g className="ts-orbit ts-orbit-b">
+          <ellipse cx="24" cy="24" rx="19" ry="9" transform="rotate(32 24 24)" stroke="url(#ts-mark)" strokeWidth="2" opacity=".45" />
+          <circle cx="8" cy="33.5" r="2" fill="#60A5FA" opacity=".85" />
+        </g>
+        <circle className="ts-halo" cx="24" cy="24" r="5" fill="none" stroke="#38BDF8" strokeWidth="1.5" />
+        <circle className="ts-core" cx="24" cy="24" r="5" fill="url(#ts-mark)" />
+      </svg>
+      <span className="text-2xl font-black tracking-tight text-white transition-colors group-hover:text-blue-200">
+        TeleSync <span className="text-blue-400">OS</span>
+      </span>
+    </a>
+  );
+}
+
 export default function AuthGate({ children }: { children: any }) {
   const [token, setToken] = useState(sessionStorage.getItem('app_token') || '');
   const [mode, setMode] = useState<Mode>('login');
@@ -101,14 +178,14 @@ export default function AuthGate({ children }: { children: any }) {
   const label = 'block text-xs text-gray-400 mb-1';
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white flex items-center justify-center p-4">
-      <div className="w-full max-w-sm">
-        <div className="flex items-center justify-center gap-2 mb-6 select-none">
-          <span className="w-3 h-3 rounded-full bg-gradient-to-br from-blue-400 to-emerald-400 shadow-[0_0_12px_rgba(59,130,246,.8)]" />
-          <span className="text-2xl font-black tracking-tight">TeleSync <span className="text-blue-400">OS</span></span>
+    <div className="relative min-h-screen text-white flex items-center justify-center p-4" style={{ backgroundColor: '#060910' }}>
+      <Backdrop />
+      <div className="relative z-10 w-full max-w-sm">
+        <div className="flex justify-center mb-6 select-none">
+          <Logo />
         </div>
 
-        <div className="bg-[#141414] border border-white/10 rounded-2xl p-6 shadow-2xl">
+        <div className="bg-[#0d1220]/92 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-[0_24px_70px_-20px_rgba(0,0,0,.9)]">
           {mode !== 'forgot' && (
             <div className="grid grid-cols-2 gap-1 p-1 mb-5 rounded-lg bg-black/40">
               {(['login', 'register'] as Mode[]).map(m => (
