@@ -84,8 +84,19 @@ export class TelegramMarketScanner {
       return entries;
     }
 
+    // Экономия ИИ: сначала дешёвый разбор регуляркой, ИИ — только для нераспознанного, с потолком за прогон
+    let aiBudget = Number(process.env.MARKET_AI_BUDGET || 8);
     for (const row of rows) {
-      const items = await this.parseMessageAI(row.text);
+      let items: { product: string; price: number; quantity?: number }[] = [];
+      const cheap = this.parseMessage(row.text);
+      if (cheap) {
+        items = [cheap];
+      } else if (aiBudget > 0) {
+        aiBudget--;
+        items = await this.parseMessageAI(row.text);
+      } else {
+        continue; // бюджет ИИ на этот прогон исчерпан — пропускаем, соберём в следующий раз
+      }
       for (const item of items) {
         const entry: MarketEntry = {
           seller: row.seller || "unknown",
