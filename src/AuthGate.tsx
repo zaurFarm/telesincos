@@ -95,7 +95,11 @@ function Logo() {
 }
 
 export default function AuthGate({ children }: { children: any }) {
-  const [token, setToken] = useState(sessionStorage.getItem('app_token') || '');
+  const [token, setToken] = useState(() => {
+    const saved = localStorage.getItem('app_token');
+    if (saved && !sessionStorage.getItem('app_token')) sessionStorage.setItem('app_token', saved);
+    return sessionStorage.getItem('app_token') || '';
+  });
   const [mode, setMode] = useState<Mode>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -107,11 +111,14 @@ export default function AuthGate({ children }: { children: any }) {
   const [err, setErr] = useState('');
   const [ok, setOk] = useState('');
   const [busy, setBusy] = useState(false);
+  const [remember, setRemember] = useState(true);
+  const [showHelp, setShowHelp] = useState(false);
 
   useEffect(() => {
     const onExpired = () => {
       const had = !!sessionStorage.getItem('app_token');
       sessionStorage.removeItem('app_token');
+      localStorage.removeItem('app_token');
       setToken('');
       if (had) setErr(ERRORS.unauthorized);
     };
@@ -128,7 +135,12 @@ export default function AuthGate({ children }: { children: any }) {
     return { r, data };
   };
 
-  const finish = (t: string) => { sessionStorage.setItem('app_token', t); setToken(t); };
+  const finish = (t: string) => {
+    sessionStorage.setItem('app_token', t);
+    if (remember) localStorage.setItem('app_token', t);
+    else localStorage.removeItem('app_token');
+    setToken(t);
+  };
 
   const validEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
 
@@ -255,10 +267,33 @@ export default function AuthGate({ children }: { children: any }) {
 
           {mode === 'login' && needCode && (
             <div className="mb-3">
-              <label className={label}>Код из приложения-аутентификатора</label>
+              <div className="flex items-center gap-1.5 mb-1">
+                <label className={label + ' mb-0'}>Код из Google Authenticator</label>
+                <button type="button" onClick={() => setShowHelp(h => !h)} aria-label="Что это"
+                  className="w-4 h-4 rounded-full border border-gray-500 text-gray-400 text-[10px] leading-none hover:border-blue-400 hover:text-blue-400 transition">?</button>
+              </div>
+              {showHelp && (
+                <div className="mb-2 text-xs text-gray-400 bg-black/40 border border-white/10 rounded-lg p-3 space-y-2">
+                  <p>Это шесть цифр, которые меняются каждые 30 секунд. Их показывает приложение на вашем телефоне, поэтому войти сможете только вы, даже если пароль узнает кто-то ещё.</p>
+                  <p>Если приложение ещё не установлено, поставьте <b className="text-gray-300">Google Authenticator</b> или <b className="text-gray-300">Яндекс Ключ</b>, затем отсканируйте QR-код в настройках панели.</p>
+                  <p className="flex gap-3">
+                    <a href="https://apps.apple.com/app/google-authenticator/id388497605" target="_blank" rel="noreferrer" className="text-blue-400 hover:underline">Скачать для iPhone</a>
+                    <a href="https://play.google.com/store/apps/details?id=com.google.android.apps.authenticator2" target="_blank" rel="noreferrer" className="text-blue-400 hover:underline">Скачать для Android</a>
+                  </p>
+                  <p className="text-gray-500">Потеряли телефон? Войдите по запасному ключу, который выдавался при настройке.</p>
+                </div>
+              )}
               <input className={input + ' tracking-[0.4em] text-center font-mono'} placeholder="000000" inputMode="numeric" maxLength={6} autoFocus
                 value={code} onChange={e => setCode(e.target.value.replace(/\D/g, ''))} onKeyDown={onEnter} />
             </div>
+          )}
+
+          {mode === 'login' && (
+            <label className="flex items-center gap-2 mb-4 text-sm text-gray-400 cursor-pointer select-none">
+              <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)}
+                className="w-4 h-4 rounded accent-blue-600" />
+              Запомнить меня на этом устройстве
+            </label>
           )}
 
           {err && <div className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 mb-3">{err}</div>}
