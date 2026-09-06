@@ -35,7 +35,9 @@ function fallbackParse(text: string) {
   const client = new TelegramClient(new StringSession(process.env.SESSION!), +process.env.API_ID!, process.env.API_HASH!, { connectionRetries: 3 });
   await client.connect();
   fs.mkdirSync(OUT_DIR, { recursive: true });
-  const msgs = await client.getMessages(CHANNEL, { limit: LIMIT * 12 });
+  const msgs: any[] = [];
+  if (LIMIT > 0) { const got = await client.getMessages(CHANNEL, { limit: LIMIT * 12 }); for (const m of got) msgs.push(m); }
+  else { for await (const m of client.iterMessages(CHANNEL, {})) { msgs.push(m); if (msgs.length % 5000 === 0) console.log('прочитано сообщений', msgs.length); } }
   const groups = new Map<string, any[]>();
   for (const m of msgs) {
     const key = m.groupedId ? String(m.groupedId) : 'single_' + m.id;
@@ -44,7 +46,7 @@ function fallbackParse(text: string) {
   }
   const out: any[] = []; let n = 0;
   for (const [key, arr] of groups) {
-    if (out.length >= LIMIT) break;
+    if (LIMIT > 0 && out.length >= LIMIT) break;
     arr.sort((a, b) => a.id - b.id);
     const text = arr.map((m) => m.message).filter(Boolean).join('\n');
     if (!/Артикул/i.test(text) || !/Цена/i.test(text)) continue;
