@@ -11,8 +11,8 @@ const GROQ_URL = (process.env.GROQ_BASE_URL || 'https://api.groq.com/openai/v1')
 const GROQ_MODEL = process.env.GROQ_MODEL_JSON || process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
 
 async function parseWithAI(text: string) {
-  const prompt = `Разбери описание товара из Telegram-поста продавца обуви. Верни ТОЛЬКО JSON без пояснений с полями:
-{"title": "короткое название товара для витрины, например 'Мужские туфли BASCONI из натуральной замши'", "brand": "бренд", "type": "тип обуви (туфли, кроссовки, ботинки, лоферы, мокасины, сандалии и т.п.)", "material": "материал", "sizes": [39,40], "price": 8500, "sku": "артикул", "features": ["короткие характеристики"], "description": "2-3 предложения для карточки без контактов и телефонов"}
+  const prompt = `Разбери описание товара из Telegram-поста продавца обуви и сумок. Определи по фото-описанию и тексту, что это: обувь или сумка, мужское, женское или детское. Верни ТОЛЬКО JSON без пояснений с полями:
+{"title": "короткое название товара для витрины, например 'Женские туфли Prada из натуральной кожи' или 'Женская сумка Chanel из экокожи'", "category": "ровно одно из: мужская обувь, женская обувь, детская обувь, женские сумки, мужские сумки, аксессуары, другое", "brand": "бренд", "type": "тип товара (туфли, кроссовки, ботинки, лоферы, шлёпанцы, сандалии, сапоги, сумка, рюкзак, клатч, кошелёк и т.п.)", "material": "материал", "sizes": [39,40], "price": 8500, "sku": "артикул", "features": ["короткие характеристики"], "description": "2-3 предложения для карточки без контактов и телефонов"}
 Цену верни числом без точек и пробелов. Пост:\n${text}`;
   const r = await fetch(GROQ_URL, {
     method: 'POST',
@@ -49,7 +49,7 @@ function fallbackParse(text: string) {
     if (LIMIT > 0 && out.length >= LIMIT) break;
     arr.sort((a, b) => a.id - b.id);
     const text = arr.map((m) => m.message).filter(Boolean).join('\n');
-    if (!/Артикул/i.test(text) || !/Цена/i.test(text)) continue;
+    if (!/Цена|руб|₽|\d{3,}/i.test(text)) continue;
     const fb = fallbackParse(text);
     let ai = await parseWithAI(text);
     if (!ai) ai = {};
@@ -66,7 +66,7 @@ function fallbackParse(text: string) {
       photos.push(`https://api.kuping.ru/storage/tg/${CHANNEL.toLowerCase()}/${path.basename(file)}`);
     }
     out.push({
-      sku, title: ai.title || `${ai.brand || ''} ${ai.type || 'обувь'} арт. ${sku}`.trim(),
+      sku, category: ai.category || null, title: ai.title || `${ai.brand || ''} ${ai.type || 'обувь'} арт. ${sku}`.trim(),
       brand: ai.brand || null, type: ai.type || null, material: ai.material || null,
       sizes: ai.sizes?.length ? ai.sizes : fb.sizes, price: ai.price || fb.price,
       features: ai.features || [], description: ai.description || '', photos,
