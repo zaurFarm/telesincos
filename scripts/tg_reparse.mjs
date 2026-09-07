@@ -4,7 +4,7 @@ const URL=(env.GROQ_BASE_URL||'https://api.groq.com/openai/v1').replace(/\/$/,''
 const MODEL=env.GROQ_MODEL_JSON||env.GROQ_MODEL||'llama-3.3-70b-versatile';
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 async function ask(text){
-  const prompt=`Разбери описание товара из Telegram-поста продавца обуви. Верни ТОЛЬКО JSON: {"title":"короткое название для витрины, например 'Мужские туфли Prada из натуральной кожи'","brand":"бренд","type":"тип обуви","material":"материал","sizes":[40,41],"price":7500,"sku":"артикул","features":["короткие характеристики"],"description":"2-3 предложения без контактов"}. Цена числом. Пост:\n${text}`;
+  const prompt=`Разбери описание товара из Telegram-поста продавца обуви и сумок. Определи, обувь это или сумка, мужское, женское или детское. Верни ТОЛЬКО JSON: {"title":"короткое название для витрины, например 'Женские туфли Prada из натуральной кожи' или 'Женская сумка Chanel'","category":"ровно одно из: мужская обувь, женская обувь, детская обувь, женские сумки, мужские сумки, аксессуары, другое","brand":"бренд","type":"тип товара (туфли, кроссовки, ботинки, сумка, рюкзак, клатч и т.п.)","material":"материал","sizes":[40,41],"price":7500,"sku":"артикул","features":["короткие характеристики"],"description":"2-3 предложения без контактов"}. Цена числом. Пост:\n${text}`;
   for(let a=0;a<4;a++){
     const r=await fetch(URL,{method:'POST',headers:{Authorization:'Bearer '+env.GROQ_API_KEY,'Content-Type':'application/json'},body:JSON.stringify({model:MODEL,temperature:0,response_format:{type:'json_object'},messages:[{role:'user',content:prompt}]})});
     if(r.status===429){const w=(a+1)*4000;console.log('429, жду',w/1000,'с');await sleep(w);continue;}
@@ -14,13 +14,14 @@ async function ask(text){
   }
   return null;
 }
-const d=JSON.parse(fs.readFileSync('/root/tg_export.json','utf8'));
+const FILE=process.argv[2]||'/root/tg_export.json';
+const d=JSON.parse(fs.readFileSync(FILE,'utf8'));
 let fixed=0;
 for(const p of d){
-  if(!p.title.startsWith('обувь арт')) continue;
+  if(!p.title.startsWith('обувь арт') && p.category) continue;
   const ai=await ask(p.raw);
-  if(ai?.title){Object.assign(p,{title:ai.title,brand:ai.brand||p.brand,type:ai.type||p.type,material:ai.material||p.material,sizes:ai.sizes?.length?ai.sizes:p.sizes,price:ai.price||p.price,features:ai.features||[],description:ai.description||''});fixed++;}
+  if(ai?.title){Object.assign(p,{title:ai.title,category:ai.category||p.category,brand:ai.brand||p.brand,type:ai.type||p.type,material:ai.material||p.material,sizes:ai.sizes?.length?ai.sizes:p.sizes,price:ai.price||p.price,features:ai.features||[],description:ai.description||''});fixed++;}
   await sleep(1200);
 }
-fs.writeFileSync('/root/tg_export.json',JSON.stringify(d,null,1));
+fs.writeFileSync(FILE,JSON.stringify(d,null,1));
 console.log('исправлено:',fixed,'из',d.filter(p=>p.title.startsWith('обувь арт')).length+fixed);
