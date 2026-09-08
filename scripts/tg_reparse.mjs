@@ -20,7 +20,7 @@ let fixed=0;
 for(const p of d){
   if(!p.title.startsWith('обувь арт') && p.category) continue;
   const ai=await ask(p.raw);
-  if(ai?.title){Object.assign(p,{title:ai.title,category:ai.category||p.category,brand:ai.brand||p.brand,type:ai.type||p.type,material:ai.material||p.material,sizes:ai.sizes?.length?ai.sizes:p.sizes,price:ai.price||p.price,features:ai.features||[],description:ai.description||''});fixed++;}
+  if(ai?.title){Object.assign(p,{title:ai.title,category:ai.category||p.category,category:ai.category||p.category,brand:ai.brand||p.brand,type:ai.type||p.type,material:ai.material||p.material,sizes:ai.sizes?.length?ai.sizes:p.sizes,price:ai.price||p.price,features:ai.features||[],description:ai.description||''});fixed++;}
   await sleep(1200);
 }
 fs.writeFileSync(FILE,JSON.stringify(d,null,1));
