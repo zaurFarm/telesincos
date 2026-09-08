@@ -8,7 +8,7 @@ const LIMIT = parseInt(process.env.TG_LIMIT || '100');
 const OUT_DIR = '/var/www/kuping.ru/api/storage/app/public/tg/' + CHANNEL.toLowerCase();
 const OUT_JSON = '/root/tg_export.json';
 const GROQ_URL = (process.env.GROQ_BASE_URL || 'https://api.groq.com/openai/v1').replace(/\/$/, '') + '/chat/completions';
-const GROQ_MODEL = process.env.GROQ_MODEL_JSON || process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
+const GROQ_MODEL = process.env.GROQ_MODEL_JSON || process.env.GROQ_MODEL || 'openai/gpt-oss-120b';
 
 async function parseWithAI(text: string) {
   const prompt = `Разбери описание товара из Telegram-поста продавца обуви и сумок. Определи по фото-описанию и тексту, что это: обувь или сумка, мужское, женское или детское. Верни ТОЛЬКО JSON без пояснений с полями:
@@ -17,7 +17,7 @@ async function parseWithAI(text: string) {
   const r = await fetch(GROQ_URL, {
     method: 'POST',
     headers: { 'Authorization': 'Bearer ' + process.env.GROQ_API_KEY, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model: GROQ_MODEL, temperature: 0, response_format: { type: 'json_object' }, messages: [{ role: 'user', content: prompt }] }),
+    body: JSON.stringify({ model: GROQ_MODEL, reasoning_effort: 'low', temperature: 0, response_format: { type: 'json_object' }, messages: [{ role: 'user', content: prompt }] }),
   });
   const j: any = await r.json();
   const c = j?.choices?.[0]?.message?.content || '{}';
