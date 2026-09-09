@@ -2,7 +2,7 @@ import fs from 'fs';
 const env = Object.fromEntries(fs.readFileSync('/var/www/telesincos/.env','utf8').split('\n').filter(l=>l.includes('=')&&!l.startsWith('#')).map(l=>{const i=l.indexOf('=');return [l.slice(0,i).trim(), l.slice(i+1).trim().replace(/^["']|["']$/g,'')]}));
 const GROQ=(env.GROQ_BASE_URL||'https://api.groq.com/openai/v1').replace(/\/$/,'')+'/chat/completions';
 const groqKeys=[...new Set([env.GROQ_API_KEY, ...(env.GROQ_API_KEYS||'').split(',')].map(k=>(k||'').trim()).filter(k=>k.startsWith('gsk_')))];
-const groqModels=['llama-3.3-70b-versatile','openai/gpt-oss-120b','openai/gpt-oss-20b','llama-3.1-8b-instant','qwen/qwen3-32b'];
+const groqModels=['openai/gpt-oss-120b','openai/gpt-oss-20b','llama-3.1-8b-instant','qwen/qwen3-32b'];
 export const targets=[
   ...groqModels.flatMap(m=>groqKeys.map((k,i)=>({name:`groq#${i+1}/${m}`, url:GROQ, key:k, model:m}))),
   ...(env.OPENAI_API_KEY?[{name:'openai/gpt-4o-mini', url:'https://api.openai.com/v1/chat/completions', key:env.OPENAI_API_KEY, model:'gpt-4o-mini'}]:[]),
