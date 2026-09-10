@@ -2,6 +2,8 @@ import { TelegramClient } from 'telegram';
 import { StringSession } from 'telegram/sessions';
 import * as fs from 'fs';
 import * as path from 'path';
+// @ts-ignore
+import { askJSON } from './ai_rotate.mjs';
 
 const CHANNEL = process.env.TG_CHANNEL || 'Talehosmanov';
 const LIMIT = parseInt(process.env.TG_LIMIT || '100');
@@ -11,17 +13,10 @@ const GROQ_URL = (process.env.GROQ_BASE_URL || 'https://api.groq.com/openai/v1')
 const GROQ_MODEL = process.env.GROQ_MODEL_JSON || process.env.GROQ_MODEL || 'openai/gpt-oss-120b';
 
 async function parseWithAI(text: string) {
-  const prompt = `Разбери описание товара из Telegram-поста продавца обуви и сумок. Определи по фото-описанию и тексту, что это: обувь или сумка, мужское, женское или детское. Верни ТОЛЬКО JSON без пояснений с полями:
-{"title": "короткое название товара для витрины, например 'Женские туфли Prada из натуральной кожи' или 'Женская сумка Chanel из экокожи'", "category": "ровно одно из: мужская обувь, женская обувь, детская обувь, женские сумки, мужские сумки, аксессуары, другое", "brand": "бренд", "type": "тип товара (туфли, кроссовки, ботинки, лоферы, шлёпанцы, сандалии, сапоги, сумка, рюкзак, клатч, кошелёк и т.п.)", "material": "материал", "sizes": [39,40], "price": 8500, "sku": "артикул", "features": ["короткие характеристики"], "description": "2-3 предложения для карточки без контактов и телефонов"}
-Цену верни числом без точек и пробелов. Пост:\n${text}`;
-  const r = await fetch(GROQ_URL, {
-    method: 'POST',
-    headers: { 'Authorization': 'Bearer ' + process.env.GROQ_API_KEY, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model: GROQ_MODEL, reasoning_effort: 'low', temperature: 0, response_format: { type: 'json_object' }, messages: [{ role: 'user', content: prompt }] }),
-  });
-  const j: any = await r.json();
-  const c = j?.choices?.[0]?.message?.content || '{}';
-  try { return JSON.parse(c); } catch { return null; }
+  const r: any = await askJSON(`Разбери описание товара из Telegram-поста продавца обуви и сумок. Определи, обувь это или сумка, мужское, женское или детское. Верни ТОЛЬКО JSON:
+{"title":"название для витрины: тип + бренд + материал, например 'Мужские кроссовки Stefano Ricci из натуральной кожи'","category":"ровно одно из: мужская обувь, женская обувь, детская обувь, женские сумки, мужские сумки, аксессуары, другое","brand":"бренд","type":"тип товара (туфли, кроссовки, ботинки, лоферы, шлёпанцы, сандалии, сапоги, сумка, рюкзак, клатч и т.п.)","model":"название модели или линейки, если есть","color":"цвет","material":"материал","season":"сезон, если есть","sizes":[39,40],"price":8500,"sku":"артикул","features":["3-5 коротких характеристик"],"description":"структурированное описание из 3 абзацев: 1) что это и для кого, 2) материалы и качество, 3) комплектация и уход. Без контактов, телефонов и ссылок. Уникальная формулировка, не копия поста"}
+Цена числом без точек. Пост:\n${text}`);
+  return r?.data || null;
 }
 
 function fallbackParse(text: string) {
@@ -67,7 +62,7 @@ function fallbackParse(text: string) {
     }
     out.push({
       sku, category: ai.category || null, title: ai.title || `${ai.brand || ''} ${ai.type || 'обувь'} арт. ${sku}`.trim(),
-      brand: ai.brand || null, type: ai.type || null, material: ai.material || null,
+      brand: ai.brand || null, type: ai.type || null, material: ai.material || null, model: ai.model || null, color: ai.color || null, season: ai.season || null,
       sizes: ai.sizes?.length ? ai.sizes : fb.sizes, price: ai.price || fb.price,
       features: ai.features || [], description: ai.description || '', photos,
       source_post: `https://t.me/${CHANNEL}/${arr[0].id}`, raw: text,
