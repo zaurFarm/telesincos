@@ -8,7 +8,7 @@ import { askJSON } from './ai_rotate.mjs';
 const CHANNEL = process.env.TG_CHANNEL || 'Talehosmanov';
 const LIMIT = parseInt(process.env.TG_LIMIT || '100');
 const OUT_DIR = '/var/www/kuping.ru/api/storage/app/public/tg/' + CHANNEL.toLowerCase();
-const OUT_JSON = '/root/tg_export.json';
+const OUT_JSON = process.env.TG_OUT || '/root/tg_export_' + CHANNEL.toLowerCase() + '.json';
 const GROQ_URL = (process.env.GROQ_BASE_URL || 'https://api.groq.com/openai/v1').replace(/\/$/, '') + '/chat/completions';
 const GROQ_MODEL = process.env.GROQ_MODEL_JSON || process.env.GROQ_MODEL || 'openai/gpt-oss-120b';
 
@@ -39,16 +39,22 @@ function fallbackParse(text: string) {
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key)!.push(m);
   }
-  const out: any[] = []; let n = 0;
+  const out: any[] = fs.existsSync(OUT_JSON) ? (JSON.parse(fs.readFileSync(OUT_JSON, 'utf8')) || []) : [];
+  const donePosts = new Set(out.map((x: any) => x.source_post));
+  if (out.length) console.log('продолжаю, уже есть', out.length);
+  let n = 0;
   for (const [key, arr] of groups) {
     if (LIMIT > 0 && out.length >= LIMIT) break;
     arr.sort((a, b) => a.id - b.id);
     const text = arr.map((m) => m.message).filter(Boolean).join('\n');
     if (!/Цена|руб|₽|\d{3,}/i.test(text)) continue;
+    if (donePosts.has(`https://t.me/${CHANNEL}/${arr[0].id}`)) continue;
+    try {
     const fb = fallbackParse(text);
     let ai = await parseWithAI(text);
     if (!ai) ai = {};
-    const sku = String(ai.sku || fb.sku || key);
+    const skuRaw = String(ai.sku || fb.sku || '').replace(/[^A-Za-z0-9_-]/g, '');
+    const sku = skuRaw && !/^na$/i.test(skuRaw) ? skuRaw : key;
     const photos: string[] = [];
     let i = 0;
     for (const m of arr) {
@@ -68,6 +74,8 @@ function fallbackParse(text: string) {
       source_post: `https://t.me/${CHANNEL}/${arr[0].id}`, raw: text,
     });
     n++; if (n % 10 === 0) console.log(`разобрано ${n}`);
+    } catch (e: any) { console.error('пост', key, 'пропущен:', e?.message || e); }
+    if (n % 20 === 0) fs.writeFileSync(OUT_JSON, JSON.stringify(out, null, 1));
   }
   fs.writeFileSync(OUT_JSON, JSON.stringify(out, null, 1));
   console.log(`ГОТОВО: ${out.length} товаров, фото в ${OUT_DIR}, json в ${OUT_JSON}`);
