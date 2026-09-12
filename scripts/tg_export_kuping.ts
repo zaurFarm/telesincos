@@ -61,7 +61,13 @@ function fallbackParse(text: string) {
       if (!m.photo) continue;
       const file = path.join(OUT_DIR, `${sku}_${i++}.jpg`);
       if (!fs.existsSync(file)) {
-        const buf = await client.downloadMedia(m, {});
+        let buf: any = null;
+        try { buf = await client.downloadMedia(m, {}); }
+        catch (e: any) {
+          if (!/FILE_REFERENCE/.test(String(e?.message || e))) throw e;
+          const fresh: any = await client.getMessages(CHANNEL, { ids: [m.id] });
+          buf = fresh?.[0] ? await client.downloadMedia(fresh[0], {}) : null;
+        }
         if (buf) fs.writeFileSync(file, buf as Buffer);
       }
       photos.push(`https://api.kuping.ru/storage/tg/${CHANNEL.toLowerCase()}/${path.basename(file)}`);
