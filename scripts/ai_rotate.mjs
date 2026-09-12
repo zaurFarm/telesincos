@@ -3,7 +3,8 @@ const env = Object.fromEntries(fs.readFileSync('/var/www/telesincos/.env','utf8'
 const GROQ=(env.GROQ_BASE_URL||'https://api.groq.com/openai/v1').replace(/\/$/,'')+'/chat/completions';
 const groqKeys=[...new Set([env.GROQ_API_KEY, ...(env.GROQ_API_KEYS||'').split(',')].map(k=>(k||'').trim()).filter(k=>k.startsWith('gsk_')))];
 const groqModels=['openai/gpt-oss-120b','openai/gpt-oss-20b','qwen/qwen3.6-27b','qwen/qwen3.8-27b'];
-export const targets=[
+const GW=env.GROQ_GATEWAY||'';
+export const targets=GW?[{name:'gateway/auto',url:GW.replace(/\/$/,'')+'/v1/chat/completions',key:'gateway',model:'auto'},...(env.OPENAI_API_KEY?[{name:'openai/gpt-4o-mini',url:'https://api.openai.com/v1/chat/completions',key:env.OPENAI_API_KEY,model:'gpt-4o-mini'}]:[])]:[
   ...groqModels.flatMap(m=>groqKeys.map((k,i)=>({name:`groq#${i+1}/${m}`, url:GROQ, key:k, model:m}))),
   ...(env.OPENAI_API_KEY?[{name:'openai/gpt-4o-mini', url:'https://api.openai.com/v1/chat/completions', key:env.OPENAI_API_KEY, model:'gpt-4o-mini'}]:[]),
 ];
@@ -13,7 +14,7 @@ export async function askJSON(prompt){
     for (const t of targets){
       if ((cooldown.get(t.name)||0) > Date.now()) continue;
       try{
-        const r=await fetch(t.url,{method:'POST',headers:{Authorization:'Bearer '+t.key,'Content-Type':'application/json'},body:JSON.stringify({model:t.model,temperature:0,response_format:{type:'json_object'},messages:[{role:'user',content:prompt}]})});
+        const r=await fetch(t.url,{method:'POST',headers:{Authorization:'Bearer '+t.key,'Content-Type':'application/json'},body:JSON.stringify({model:t.model,temperature:0,response_format:{type:'json_object'},...(/qwen/.test(t.model)?{reasoning_effort:'none'}:{}),messages:[{role:'user',content:prompt}]})});
         if (r.status===429 || r.status===402 || r.status===503){ cooldown.set(t.name, Date.now()+60_000); console.log('лимит',t.name,'→ следующая'); continue; }
         if (!r.ok){ console.log('ошибка',t.name,r.status); cooldown.set(t.name, Date.now()+30_000); continue; }
         const j=await r.json(); const c=j?.choices?.[0]?.message?.content; if(!c) continue;
